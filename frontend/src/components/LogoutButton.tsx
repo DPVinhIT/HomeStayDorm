@@ -2,8 +2,13 @@
 
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ButtonHTMLAttributes } from 'react';
 
-export default function LogoutButton() {
+interface LogoutButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  hideIcon?: boolean;
+}
+
+export default function LogoutButton({ hideIcon = false, className, children, ...props }: LogoutButtonProps) {
   const router = useRouter();
 
   const handleLogout = () => {
@@ -16,10 +21,11 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="mt-6 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors mx-auto font-medium"
+      className={className || "mt-6 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors mx-auto font-medium"}
+      {...props}
     >
-      <LogOut size={18} />
-      Đăng xuất
+      {!hideIcon && <LogOut size={18} />}
+      {children || "Đăng xuất"}
     </button>
   );
 }
