@@ -35,7 +35,10 @@ const authController = require('../controllers/authController');
  *         description: Sai thông tin đăng nhập
  */
 
+const { verifyToken } = require('../middlewares/authMiddleware');
+
 router.post('/login', authController.login);
 router.post('/refresh', authController.refresh);
+router.get('/me', verifyToken, authController.getMe);
 
 module.exports = router;

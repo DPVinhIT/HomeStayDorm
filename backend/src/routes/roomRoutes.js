@@ -3,7 +3,7 @@ const router = express.Router();
 const roomController = require('../controllers/roomController');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
-router.use(verifyToken);
-router.get('/', roomController.getAllRooms);
+router.get('/available', verifyToken, roomController.getAvailableRooms);
+router.get('/', verifyToken, roomController.getAllRooms);
 
 module.exports = router;
