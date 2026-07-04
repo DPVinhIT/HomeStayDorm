@@ -61,3 +61,8 @@ INSERT INTO tai_san (ten_tai_san, loai_tai_san, don_vi_tinh, gia_tri_boi_thuong_
 ('Giường sắt 2 tầng', 'NỘI_THẤT', 'Cái', 2000000.00),
 ('Nệm cao su non', 'NỘI_THẤT', 'Tấm', 500000.00),
 ('Thẻ từ ra vào', 'PHỤ_KIỆN', 'Thẻ', 100000.00);
+
+-- 10. PHIẾU ĐĂNG KÝ THUÊ
+INSERT INTO phieu_dang_ky_thue (ma_phieu, khach_hang_id, chi_nhanh_id, hinh_thuc_thue, so_luong_nguoi, gioi_tinh_nhom, loai_phong_mong_muon, muc_gia_mong_muon, ngay_du_kien_vao_o, thoi_han_thue_thang, trang_thai, created_at) VALUES 
+('#PDK-2023-001', (SELECT id FROM khach_hang WHERE ho_ten='Phạm Văn Khách'), (SELECT id FROM chi_nhanh WHERE ten_chi_nhanh='Chi nhánh 1 - Quận 10'), 'Thuê giường', 1, 'Nam', 'Phòng 4 người', 1600000.00, '2023-11-01', 6, 'Mới', '2023-10-24 09:30:00'),
+('#PDK-2023-002', (SELECT id FROM khach_hang WHERE ho_ten='Lý Thị Thuê'), (SELECT id FROM chi_nhanh WHERE ten_chi_nhanh='Chi nhánh 1 - Quận 10'), 'Thuê phòng', 2, 'Nữ', 'Phòng 2 người', 3000000.00, '2023-11-15', 12, 'Đang xử lý', '2023-10-23 14:15:00');
