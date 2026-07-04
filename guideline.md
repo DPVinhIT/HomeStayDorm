@@ -27,7 +27,7 @@ npm install
 Tạo một file có tên là `.env` trong thư mục `backend/` (ngang hàng với `package.json`) và thêm nội dung sau:
 ```env
 # Chuỗi kết nối đến CSDL Neon
-DATABASE_URL="postgresql://neondb_owner:npg_YM1QEThoOdV0@ep-purple-wave-at6fjduy-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+DATABASE_URL="url_db_neon"
 
 # Khóa bí mật cho JWT (Access Token & Refresh Token)
 ACCESS_TOKEN_SECRET="chuoi_bi_mat_cho_access_token_cua_nhom"
