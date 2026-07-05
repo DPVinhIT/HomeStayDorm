@@ -3,6 +3,7 @@ const AppError = require('../utils/AppError');
 const depositRepository = require('../repositories/depositRepository');
 const { validateCreateDeposit, validateStatusUpdate, allowedStatuses } = require('../validators/depositValidator');
 
+// Hàm format cho dạng danh sách (phẳng)
 const normalizeDeposit = (row) => {
   if (!row) {
     return null;
@@ -24,6 +25,61 @@ const normalizeDeposit = (row) => {
   };
 };
 
+// MỚI: Hàm format cho dạng chi tiết (nested JSON) khớp 100% với Frontend
+const normalizeDepositDetail = (row) => {
+  if (!row) return null;
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+
+  const formatShortDate = (dateString) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+  };
+
+  return {
+    ma_phieu: row.ma_don_coc,
+    ngay_tao: formatDate(row.created_at),
+    nguoi_tao: row.nguoi_tao || 'Hệ thống',
+    trang_thai: depositRepository.mapStatusToDisplay(row.trang_thai),
+    
+    khach_thue: {
+      ho_ten: row.nguoi_dat || '',
+      so_dien_thoai: row.sdt || '',
+      cccd: row.cccd || '',
+      email: row.email || '',
+      dia_chi: row.dia_chi || ''
+    },
+    
+    thong_tin_phong: {
+      ten_phong: row.phong || 'Chưa chọn',
+      toa_nha_tang: `${row.toa_nha || 'Chưa có tòa nhà'} - Tầng ${row.tang || '--'}`,
+      loai_phong: row.loai_phong || '',
+      dien_tich: 'Chưa cập nhật', 
+      gia_thue: Number(row.gia_thue || 0),
+      noi_that: 'Đầy đủ cơ bản'
+    },
+    
+    thanh_toan: {
+      tien_coc_yeu_cau: Number(row.so_tien_coc || 0),
+      da_thanh_toan: Number(row.da_thanh_toan || 0),
+      phuong_thuc: row.phuong_thuc || 'Chưa có thông tin',
+      thoi_han_giu_phong: row.han_thanh_toan ? `Đến ${formatShortDate(row.han_thanh_toan)}` : 'Không có',
+      ghi_chu: row.ghi_chu || '',
+      chung_tu: 'Chưa có chứng từ'
+    }
+  };
+};
+
 const getAllDeposits = async (filters = {}) => {
   const rows = await depositRepository.getAllDeposits(db, filters);
   return rows.map(normalizeDeposit);
@@ -31,7 +87,8 @@ const getAllDeposits = async (filters = {}) => {
 
 const getDepositById = async (id) => {
   const row = await depositRepository.getDepositById(db, id);
-  return normalizeDeposit(row);
+  // SỬA ĐỔI: Sử dụng hàm format chi tiết thay vì hàm format danh sách
+  return normalizeDepositDetail(row);
 };
 
 const createDeposit = async (payload, user) => {
@@ -93,24 +150,28 @@ const updateDepositStatus = async (id, payload, user) => {
     }
 
     const confirmedBy = await depositRepository.getNhanVienIdByTaiKhoanId(client, user?.id || null);
+    
     const updatedRow = await depositRepository.updateDepositStatus(client, {
       id,
-      status: validation.normalizedStatus,
+      // SỬA DÒNG NÀY: Ưu tiên lấy trực tiếp payload.status từ frontend gửi lên
+      status: payload.status, 
       confirmedBy,
     });
 
     await client.query('COMMIT');
-    return normalizeDeposit({ ...updatedRow, nguoi_dat: existingDeposit.nguoi_dat, sdt: existingDeposit.sdt, phong: existingDeposit.phong, toa_nha: existingDeposit.toa_nha });
+    return { ...updatedRow }; // Trả về thông tin cơ bản sau khi update
   } catch (error) {
     await client.query('ROLLBACK');
     if (error instanceof AppError) {
       throw error;
     }
+    // Ghi log ra console để dễ debug nếu còn lỗi khác
+    console.error("Lỗi Database khi cập nhật:", error); 
     throw new AppError('Không thể cập nhật trạng thái phiếu đặt cọc.', 500);
   } finally {
     client.release();
   }
-};
+}; 
 
 module.exports = {
   getAllDeposits,

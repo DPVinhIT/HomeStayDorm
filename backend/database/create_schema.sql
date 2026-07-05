@@ -279,7 +279,7 @@ CREATE TABLE don_dat_coc (
 
     han_thanh_toan TIMESTAMP,
 
-    trang_thai VARCHAR(50),
+    trang_thai VARCHAR(50) CHECK (trang_thai IN ( 'DA_THANH_TOAN', 'CHO_THANH_TOAN', 'DA_HUY', 'HET_HAN' )),
 
     created_by BIGINT REFERENCES nhan_vien(id),
 

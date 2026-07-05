@@ -1,5 +1,9 @@
-const allowedStatuses = ['CHO_XU_LY', 'DA_DUYET', 'TU_CHOI'];
-
+const allowedStatuses = [ 
+  'DA_THANH_TOAN', // <-- Thêm cái này
+  'CHO_THANH_TOAN', // <-- Thêm cái này
+  'DA_HUY',         // <-- Thêm cái này
+  'HET_HAN'         // <-- Thêm cái này
+];
 const validateCreateDeposit = (payload) => {
   const errors = [];
 
@@ -32,7 +36,7 @@ const validateStatusUpdate = (payload) => {
 
   const normalizedStatus = String(payload.status || '').toUpperCase();
   if (!allowedStatuses.includes(normalizedStatus)) {
-    errors.push('status phải là CHO_XU_LY, DA_DUYET hoặc TU_CHOI.');
+    errors.push('status phải là một trong các giá trị cho phép.');
   }
 
   return { valid: errors.length === 0, errors, normalizedStatus };
