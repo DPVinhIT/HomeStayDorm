@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Filter, Search, MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, Search, MoreVertical, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import api from '@/lib/axios';
+import { useRouter } from 'next/navigation';
+import { apiCache, CACHE_TTL } from '@/lib/cache';
 
 interface Registration {
   id: string;
@@ -89,16 +91,17 @@ const mockRegistrations = [
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'Mới':
-      return <span className="px-3 py-1 text-xs font-medium bg-green-700 text-white rounded-full">{status}</span>;
+      return <span className="px-3 py-1 text-xs font-bold bg-green-700 text-white rounded-full">{status}</span>;
     case 'Đang xử lý':
+    case 'Chờ xử lý':
     case 'Đã liên hệ':
-      return <span className="px-3 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-full">{status}</span>;
+      return <span className="px-3 py-1 text-xs font-bold bg-gray-200 text-gray-700 rounded-full">{status}</span>;
     case 'Từ chối':
-      return <span className="px-3 py-1 text-xs font-medium bg-red-100 text-red-600 rounded-full">{status}</span>;
+      return <span className="px-3 py-1 text-xs font-bold bg-red-100 text-red-600 rounded-full">{status}</span>;
     case 'Đã duyệt':
-      return <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">{status}</span>;
+      return <span className="px-3 py-1 text-xs font-bold bg-green-100 text-green-700 rounded-full">{status}</span>;
     default:
-      return <span className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">{status}</span>;
+      return <span className="px-3 py-1 text-xs font-bold bg-gray-100 text-gray-600 rounded-full">{status}</span>;
   }
 };
 
@@ -112,23 +115,48 @@ export default function RegistrationPage() {
   const limit = 5;
 
   const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
-  const [roomTypeFilter, setRoomTypeFilter] = useState('Loại phòng');
+  const [roomTypeFilter, setRoomTypeFilter] = useState('Tất cả');
+  const [inputValue, setInputValue] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     const fetchRegistrations = async () => {
       setLoading(true);
+      setError(null);
+
+      const cacheKey = `registrations_${page}_${limit}_${statusFilter}_${roomTypeFilter}_${searchQuery}`;
+      const cached = apiCache.get(cacheKey);
+
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        setRegistrations(cached.data.registrations);
+        setTotalItems(cached.data.totalItems);
+        setTotalPages(cached.data.totalPages);
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await api.get('/contracts/registrations', {
-          params: { page, limit, status: statusFilter, roomType: roomTypeFilter }
+        let url = `/contracts/registrations?page=${page}&limit=${limit}`;
+        if (statusFilter && statusFilter !== 'Tất cả trạng thái') url += `&status=${encodeURIComponent(statusFilter)}`;
+        if (roomTypeFilter && roomTypeFilter !== 'Tất cả') url += `&roomType=${encodeURIComponent(roomTypeFilter)}`;
+        if (searchQuery && searchQuery.trim() !== '') url += `&search=${encodeURIComponent(searchQuery.trim())}`;
+
+        const response = await api.get(url);
+
+        const formattedData = response.data.data;
+        const total = response.data.pagination.total;
+        const total_pages = response.data.pagination.totalPages;
+
+        setRegistrations(formattedData);
+        setTotalItems(total);
+        setTotalPages(total_pages);
+
+        // Lưu vào cache
+        apiCache.set(cacheKey, {
+          data: { registrations: formattedData, totalItems: total, totalPages: total_pages },
+          timestamp: Date.now()
         });
-        if (response.data && response.data.data) {
-          setRegistrations(response.data.data);
-          if (response.data.pagination) {
-            setTotalPages(response.data.pagination.totalPages);
-            setTotalItems(response.data.pagination.total);
-          }
-          setError(null);
-        }
       } catch (err: any) {
         console.error('Failed to fetch registrations:', err);
         setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại Backend và Database.');
@@ -138,7 +166,7 @@ export default function RegistrationPage() {
     };
 
     fetchRegistrations();
-  }, [page, statusFilter, roomTypeFilter]);
+  }, [page, statusFilter, roomTypeFilter, searchQuery]);
   return (
     <div className="flex flex-col gap-6 h-full max-w-6xl mx-auto">
       {/* Header */}
@@ -149,11 +177,11 @@ export default function RegistrationPage() {
 
       {/* Filters and Table Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-        
+
         {/* Filters */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-4">
           <div className="flex gap-3">
-            <select 
+            <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className="border border-gray-300 text-gray-700 text-sm rounded-md px-3 py-2 outline-none focus:border-green-500 bg-white min-w-[150px]"
@@ -163,22 +191,33 @@ export default function RegistrationPage() {
               <option>Đang xử lý</option>
               <option>Đã duyệt</option>
             </select>
-            <select 
+            <select
               value={roomTypeFilter}
               onChange={(e) => { setRoomTypeFilter(e.target.value); setPage(1); }}
               className="border border-gray-300 text-gray-700 text-sm rounded-md px-3 py-2 outline-none focus:border-green-500 bg-white min-w-[150px]"
             >
-              <option>Loại phòng</option>
+              <option>Tất cả</option>
               <option>Studio</option>
               <option>1 Phòng ngủ</option>
               <option>2 Phòng ngủ</option>
             </select>
           </div>
-          
-          <button className="flex items-center gap-2 text-sm text-gray-600 font-medium hover:text-gray-900 transition-colors">
-            <Filter className="w-4 h-4" />
-            Bộ lọc nâng cao
-          </button>
+
+          <form
+            onSubmit={(e) => { e.preventDefault(); setSearchQuery(inputValue); setPage(1); }}
+            className="relative flex items-center"
+          >
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Tìm phiếu đăng kí"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              className="border border-gray-300 text-gray-700 text-sm rounded-md pl-9 pr-3 py-2 outline-none focus:border-green-500 bg-white min-w-[220px]"
+            />
+          </form>
         </div>
 
         {/* Table */}
@@ -197,7 +236,11 @@ export default function RegistrationPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-gray-500">Đang tải dữ liệu từ Database...</td>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                    </div>
+                  </td>
                 </tr>
               ) : error ? (
                 <tr>
@@ -211,7 +254,11 @@ export default function RegistrationPage() {
                   <td colSpan={6} className="px-6 py-10 text-center text-gray-500">Chưa có phiếu đăng ký nào</td>
                 </tr>
               ) : registrations.map((item, index) => (
-                <tr key={item.id || index} className="hover:bg-gray-50/50 transition-colors">
+                <tr
+                  key={item.id || index}
+                  onClick={() => router.push(`/manager/registration/${encodeURIComponent(item.id)}`)}
+                  className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                >
                   <td className="px-6 py-4 font-medium text-green-700">
                     {item.id}
                   </td>
@@ -254,14 +301,14 @@ export default function RegistrationPage() {
             {Math.min(page * limit, totalItems)} của {totalItems} phiếu
           </div>
           <div className="flex gap-1">
-            <button 
+            <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1 || loading}
               className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button 
+            <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || loading || totalItems === 0}
               className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"

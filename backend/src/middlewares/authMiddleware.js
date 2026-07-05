@@ -18,7 +18,7 @@ const verifyToken = (req, res, next) => {
     req.user = decoded; // { id, username, role, ... }
     next();
   } catch (error) {
-    return res.status(403).json({ message: 'Token đã hết hạn hoặc không hợp lệ' });
+    return res.status(401).json({ message: 'Token đã hết hạn hoặc không hợp lệ' });
   }
 };
 

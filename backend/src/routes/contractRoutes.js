@@ -34,6 +34,64 @@ router.use(verifyToken);
  */
 router.get('/registrations', contractController.getAllRegistrations);
 
+/**
+ * @swagger
+ * /api/contracts/registrations/{id}:
+ *   get:
+ *     summary: "Lấy chi tiết phiếu đăng ký thuê theo mã phiếu (VD: #PDK-2023-001)"
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Mã phiếu đăng ký
+ *     responses:
+ *       200:
+ *         description: Chi tiết phiếu đăng ký
+ *       404:
+ *         description: Không tìm thấy
+ */
+router.get('/registrations/:id', contractController.getRegistrationById);
+
+/**
+ * @swagger
+ * /api/contracts/registrations/{id}/status:
+ *   patch:
+ *     summary: Cập nhật trạng thái phiếu đăng ký thuê
+ *     tags: [Contracts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Mã phiếu đăng ký (VD: #PDK-2023-001)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 description: Trạng thái mới (VD: Từ chối, Đã duyệt)
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *       404:
+ *         description: Không tìm thấy phiếu đăng ký
+ */
+router.patch('/registrations/:id/status', contractController.updateRegistrationStatus);
+
 router.get('/', contractController.getAllContracts);
 
 module.exports = router;
