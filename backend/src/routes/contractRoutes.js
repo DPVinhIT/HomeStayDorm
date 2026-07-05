@@ -26,6 +26,21 @@ router.use(verifyToken);
  *           type: integer
  *           default: 10
  *         description: Số lượng kết quả mỗi trang
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Lọc theo trạng thái (VD: Mới, Đang xử lý, Đã duyệt, Từ chối)
+ *       - in: query
+ *         name: roomType
+ *         schema:
+ *           type: string
+ *         description: Lọc theo loại phòng mong muốn
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Tìm theo tên khách hàng hoặc số điện thoại
  *     responses:
  *       200:
  *         description: Trả về danh sách phiếu đăng ký
