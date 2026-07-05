@@ -15,11 +15,11 @@ INSERT INTO chi_nhanh (ten_chi_nhanh, dia_chi, so_dien_thoai) VALUES
 ('Chi nhánh 1 - Quận 10', '227 Nguyễn Văn Cừ, Phường 4, Quận 10, TP.HCM', '0123456789'),
 ('Chi nhánh 2 - Quận 7', 'Nguyễn Hữu Thọ, Tân Phong, Quận 7, TP.HCM', '0987654321');
 
--- 3. TÀI KHOẢN (Password hash tạm thời là hash của '123456' dùng bcrypt hoặc plain text tuỳ logic sau này, ở đây dùng tạm một chuỗi)
+-- 3. TÀI KHOẢN (Password hash là hash của 'Password@123' bằng bcrypt)
 INSERT INTO tai_khoan (username, password_hash, email, trang_thai, vai_tro_id) VALUES 
-('quanly01', '$2b$10$xyz', 'quanly1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='QUAN_LY')),
-('sale01', '$2b$10$xyz', 'sale1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='SALE')),
-('ketoan01', '$2b$10$xyz', 'ketoan1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='KE_TOAN'));
+('quanly01', '$2b$10$BpbLIP.vWBFVbRfW7b0Jne1hkbw7E07Zi5My50esdLUNUwtP1PoDe', 'quanly1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='QUAN_LY')),
+('sale01', '$2b$10$BpbLIP.vWBFVbRfW7b0Jne1hkbw7E07Zi5My50esdLUNUwtP1PoDe', 'sale1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='SALE')),
+('ketoan01', '$2b$10$BpbLIP.vWBFVbRfW7b0Jne1hkbw7E07Zi5My50esdLUNUwtP1PoDe', 'ketoan1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='KE_TOAN'));
 
 -- 4. NHÂN VIÊN
 INSERT INTO nhan_vien (tai_khoan_id, chi_nhanh_id, ma_nhan_vien, ho_ten, gioi_tinh, ngay_sinh, so_dien_thoai, email, trang_thai) VALUES 
@@ -66,3 +66,7 @@ INSERT INTO tai_san (ten_tai_san, loai_tai_san, don_vi_tinh, gia_tri_boi_thuong_
 INSERT INTO phieu_dang_ky_thue (ma_phieu, khach_hang_id, chi_nhanh_id, hinh_thuc_thue, so_luong_nguoi, gioi_tinh_nhom, loai_phong_mong_muon, muc_gia_mong_muon, ngay_du_kien_vao_o, thoi_han_thue_thang, trang_thai, created_at) VALUES 
 ('#PDK-2023-001', (SELECT id FROM khach_hang WHERE ho_ten='Phạm Văn Khách'), (SELECT id FROM chi_nhanh WHERE ten_chi_nhanh='Chi nhánh 1 - Quận 10'), 'Thuê giường', 1, 'Nam', 'Phòng 4 người', 1600000.00, '2023-11-01', 6, 'Mới', '2023-10-24 09:30:00'),
 ('#PDK-2023-002', (SELECT id FROM khach_hang WHERE ho_ten='Lý Thị Thuê'), (SELECT id FROM chi_nhanh WHERE ten_chi_nhanh='Chi nhánh 1 - Quận 10'), 'Thuê phòng', 2, 'Nữ', 'Phòng 2 người', 3000000.00, '2023-11-15', 12, 'Đang xử lý', '2023-10-23 14:15:00');
+-- 10. PHIẾU ĐĂNG KÝ THUÊ (Mock Data)
+INSERT INTO phieu_dang_ky_thue (ma_phieu, khach_hang_id, nhan_vien_sale_id, loai_phong_mong_muon, muc_gia_mong_muon, so_luong_nguoi, ngay_du_kien_vao_o, ghi_chu, trang_thai) VALUES
+('PDK-20231010-001', (SELECT id FROM khach_hang WHERE so_dien_thoai='0933111222'), (SELECT id FROM nhan_vien WHERE ma_nhan_vien='NVBH001'), 'Phòng 4 người', 1500000.00, 1, '2023-11-01', 'Cần phòng có cửa sổ', 'CHO_XU_LY'),
+('PDK-20231012-002', (SELECT id FROM khach_hang WHERE so_dien_thoai='0933222333'), (SELECT id FROM nhan_vien WHERE ma_nhan_vien='NVBH001'), 'Phòng 6 người', 1200000.00, 2, '2023-11-15', 'Muốn ở chung bạn', 'DANG_XU_LY');
