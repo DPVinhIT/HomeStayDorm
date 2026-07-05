@@ -156,6 +156,7 @@ export default function CreateRegistrationPage() {
               loading={loading}
               registrationData={formData.registration}
               updateRegistration={(data: any) => updateFormData('registration', data)}
+              customerData={formData.customer}
             />
           )}
         </div>

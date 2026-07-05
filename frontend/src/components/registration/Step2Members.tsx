@@ -10,24 +10,26 @@ interface Props {
 
 const InputField = ({ label, name, value, type = "text", placeholder, index, onChange }: any) => (
   <div>
-    <label className="block text-xs font-bold text-gray-800 mb-1.5">{label}</label>
+    <label className="block text-xs font-bold text-gray-800 mb-1.5">{label} <span className="text-red-500">*</span></label>
     <input 
       type={type} 
       value={value || ''}
       onChange={(e) => onChange(index, name, e.target.value)}
       placeholder={placeholder}
       className="w-full p-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-[#00502B] focus:ring-2 focus:ring-[#00502B]/20 transition-all bg-white shadow-sm"
+      required
     />
   </div>
 );
 
 const SelectField = ({ label, name, value, options, index, onChange }: any) => (
   <div>
-    <label className="block text-xs font-bold text-gray-800 mb-1.5">{label}</label>
+    <label className="block text-xs font-bold text-gray-800 mb-1.5">{label} <span className="text-red-500">*</span></label>
     <select 
       value={value || ''}
       onChange={(e) => onChange(index, name, e.target.value)}
       className="w-full p-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium focus:outline-none focus:border-[#00502B] focus:ring-2 focus:ring-[#00502B]/20 transition-all bg-white shadow-sm"
+      required
     >
       <option value="" disabled>Chọn {label.toLowerCase()}</option>
       {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
@@ -77,6 +79,11 @@ export default function Step2Members({ data, updateData, onNext, onBack }: Props
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  // Validate all members have all fields filled. If no members, it's valid (length 0 returns true for every).
+  const isFormValid = data.every(member => 
+    member.ho_ten && member.gioi_tinh && member.ngay_sinh && member.cccd && member.so_dien_thoai && member.quan_he
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -142,7 +149,8 @@ export default function Step2Members({ data, updateData, onNext, onBack }: Props
         </button>
         <button 
           onClick={onNext}
-          className="bg-[#00502B] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#003d20] transition-colors"
+          disabled={!isFormValid}
+          className="bg-[#00502B] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#003d20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Tiếp tục
         </button>

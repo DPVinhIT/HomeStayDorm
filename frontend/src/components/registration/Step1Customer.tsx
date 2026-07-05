@@ -14,7 +14,7 @@ interface Props {
 
 const InputField = ({ label, icon: Icon, name, value, onChange, placeholder, required = false, type = 'text' }: any) => (
   <div>
-    <label className="block text-sm font-bold text-gray-800 mb-2">{label} {required && '*'}</label>
+    <label className="block text-sm font-bold text-gray-800 mb-2">{label} {required && <span className="text-red-500">*</span>}</label>
     <div className="relative group">
       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#00502B]">
         <Icon size={18} className="text-gray-400 group-focus-within:text-[#00502B] transition-colors" />
@@ -34,7 +34,7 @@ const InputField = ({ label, icon: Icon, name, value, onChange, placeholder, req
 
 const SelectField = ({ label, icon: Icon, name, value, onChange, options, required = false }: any) => (
   <div>
-    <label className="block text-sm font-bold text-gray-800 mb-2">{label} {required && '*'}</label>
+    <label className="block text-sm font-bold text-gray-800 mb-2">{label} {required && <span className="text-red-500">*</span>}</label>
     <div className="relative group">
       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#00502B]">
         <Icon size={18} className="text-gray-400 group-focus-within:text-[#00502B] transition-colors" />
@@ -124,13 +124,14 @@ export default function Step1Customer({ data, updateData, onNext, onCancel }: Pr
         <InputField label="Số điện thoại" icon={Phone} name="so_dien_thoai" value={data.customer.so_dien_thoai} onChange={handleCustomerChange} placeholder="Nhập số điện thoại" required />
         <InputField label="Số CMND/CCCD" icon={CreditCard} name="cccd" value={data.customer.cccd} onChange={handleCustomerChange} placeholder="Nhập số CMND/CCCD" required />
 
-        <InputField type="date" label="Ngày sinh" icon={Calendar} name="ngay_sinh" value={data.customer.ngay_sinh} onChange={handleCustomerChange} placeholder="" />
+        <InputField type="date" label="Ngày sinh" icon={Calendar} name="ngay_sinh" value={data.customer.ngay_sinh} onChange={handleCustomerChange} placeholder="" required />
         <SelectField
           label="Giới tính"
           icon={User}
           name="gioi_tinh"
           value={data.customer.gioi_tinh}
           onChange={handleCustomerChange}
+          required
           options={[
             { value: 'Nam', label: 'Nam' },
             { value: 'Nữ', label: 'Nữ' },
@@ -138,11 +139,57 @@ export default function Step1Customer({ data, updateData, onNext, onCancel }: Pr
           ]}
         />
 
-        <InputField label="Email" icon={Mail} name="email" value={data.customer.email} onChange={handleCustomerChange} placeholder="example@email.com" />
-        <InputField label="Quê quán" icon={MapPin} name="dia_chi" value={data.customer.dia_chi} onChange={handleCustomerChange} placeholder="Nhập quê quán" />
+        <InputField label="Email" icon={Mail} name="email" value={data.customer.email} onChange={handleCustomerChange} placeholder="example@email.com" required />
+        <SelectField
+          label="Quê quán"
+          icon={MapPin}
+          name="dia_chi"
+          value={data.customer.dia_chi}
+          onChange={handleCustomerChange}
+          required
+          options={[
+            // 6 Thành phố trực thuộc Trung ương
+            { value: 'Hà Nội', label: 'Hà Nội' },
+            { value: 'TP. Hồ Chí Minh', label: 'TP. Hồ Chí Minh' },
+            { value: 'Đà Nẵng', label: 'Đà Nẵng' },
+            { value: 'Hải Phòng', label: 'Hải Phòng' },
+            { value: 'Huế', label: 'Huế' },
+            { value: 'Cần Thơ', label: 'Cần Thơ' },
+            // 28 Tỉnh (theo NQ 202/2025/QH15, hiệu lực 1/7/2025)
+            { value: 'Cao Bằng', label: 'Cao Bằng' },
+            { value: 'Tuyên Quang', label: 'Tuyên Quang' },       // + Hà Giang
+            { value: 'Lào Cai', label: 'Lào Cai' },               // + Yên Bái
+            { value: 'Điện Biên', label: 'Điện Biên' },
+            { value: 'Lai Châu', label: 'Lai Châu' },
+            { value: 'Sơn La', label: 'Sơn La' },
+            { value: 'Lạng Sơn', label: 'Lạng Sơn' },
+            { value: 'Thái Nguyên', label: 'Thái Nguyên' },       // + Bắc Kạn
+            { value: 'Quảng Ninh', label: 'Quảng Ninh' },
+            { value: 'Phú Thọ', label: 'Phú Thọ' },               // + Vĩnh Phúc + Hòa Bình
+            { value: 'Bắc Ninh', label: 'Bắc Ninh' },             // + Bắc Giang
+            { value: 'Hải Dương', label: 'Hải Dương' },           // + Hưng Yên
+            { value: 'Hà Nam', label: 'Hà Nam' },                  // + Nam Định + Ninh Bình
+            { value: 'Thanh Hóa', label: 'Thanh Hóa' },
+            { value: 'Nghệ An', label: 'Nghệ An' },
+            { value: 'Hà Tĩnh', label: 'Hà Tĩnh' },
+            { value: 'Quảng Bình', label: 'Quảng Bình' },         // + Quảng Trị
+            { value: 'Quảng Nam', label: 'Quảng Nam' },            // + Quảng Ngãi
+            { value: 'Bình Định', label: 'Bình Định' },            // + Phú Yên
+            { value: 'Khánh Hòa', label: 'Khánh Hòa' },           // + Ninh Thuận
+            { value: 'Gia Lai', label: 'Gia Lai' },                // + Kon Tum
+            { value: 'Đắk Lắk', label: 'Đắk Lắk' },              // + Đắk Nông
+            { value: 'Lâm Đồng', label: 'Lâm Đồng' },             // + Bình Thuận
+            { value: 'Bình Dương', label: 'Bình Dương' },          // + Bình Phước + Tây Ninh
+            { value: 'Đồng Nai', label: 'Đồng Nai' },             // + Bà Rịa - Vũng Tàu
+            { value: 'Long An', label: 'Long An' },                 // + Tiền Giang
+            { value: 'Đồng Tháp', label: 'Đồng Tháp' },           // + An Giang + Kiên Giang
+            { value: 'Hậu Giang', label: 'Hậu Giang' },           // + Sóc Trăng + Bạc Liêu + Cà Mau
+            { value: 'Bến Tre', label: 'Bến Tre' },                // + Trà Vinh + Vĩnh Long
+          ]}
+        />
 
-        <InputField label="Quốc tịch" icon={Globe} name="quoc_tich" value={data.customer.quoc_tich} onChange={handleCustomerChange} placeholder="VD: Việt Nam" />
-        <InputField label="Nghề nghiệp" icon={Briefcase} name="nghe_nghiep" value={data.customer.nghe_nghiep} onChange={handleCustomerChange} placeholder="Nhập nghề nghiệp" />
+        <InputField label="Quốc tịch" icon={Globe} name="quoc_tich" value={data.customer.quoc_tich} onChange={handleCustomerChange} placeholder="VD: Việt Nam" required />
+        <InputField label="Nghề nghiệp" icon={Briefcase} name="nghe_nghiep" value={data.customer.nghe_nghiep} onChange={handleCustomerChange} placeholder="Nhập nghề nghiệp" required />
       </div>
 
       <div className="flex justify-end gap-4 pt-6 mt-4 border-t border-gray-100">
@@ -154,7 +201,17 @@ export default function Step1Customer({ data, updateData, onNext, onCancel }: Pr
         </button>
         <button
           onClick={onNext}
-          disabled={!data.customer.ho_ten || !data.customer.so_dien_thoai || !data.customer.cccd}
+          disabled={
+            !data.customer.ho_ten || 
+            !data.customer.so_dien_thoai || 
+            !data.customer.cccd || 
+            !data.customer.ngay_sinh || 
+            !data.customer.gioi_tinh || 
+            !data.customer.email || 
+            !data.customer.dia_chi || 
+            !data.customer.quoc_tich || 
+            !data.customer.nghe_nghiep
+          }
           className="bg-[#00502B] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#003d20] transition-colors disabled:opacity-50 flex items-center gap-2"
         >
           Tiếp tục <span className="text-lg leading-none">&rarr;</span>

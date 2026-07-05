@@ -10,9 +10,10 @@ interface Props {
   loading: boolean;
   registrationData: any;
   updateRegistration: (data: any) => void;
+  customerData?: any;
 }
 
-export default function Step3RoomAppointment({ data, updateData, onSubmit, onBack, loading, registrationData, updateRegistration }: Props) {
+export default function Step3RoomAppointment({ data, updateData, onSubmit, onBack, loading, registrationData, updateRegistration, customerData }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -21,9 +22,15 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
   const [filters, setFilters] = useState({
     chi_nhanh_id: '1',
     loai_phong: '',
-    gioi_tinh: 'Nam',
+    gioi_tinh: '',
     muc_gia: ''
   });
+
+  // Sync gender filter from customer info (Step 1) whenever customerData changes
+  useEffect(() => {
+    const gender = customerData?.gioi_tinh || '';
+    setFilters(prev => ({ ...prev, gioi_tinh: gender }));
+  }, [customerData?.gioi_tinh]);
 
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentNote, setAppointmentNote] = useState('');
@@ -116,7 +123,7 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2">Ngày dự kiến chuyển vào</label>
+              <label className="block text-sm font-bold text-gray-800 mb-2">Ngày dự kiến chuyển vào <span className="text-red-500">*</span></label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#00502B]">
                   <Calendar size={18} className="text-gray-400 group-focus-within:text-[#00502B] transition-colors" />
@@ -126,11 +133,12 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
                   value={registrationData.ngay_du_kien_vao_o || ''}
                   onChange={(e) => updateRegistration({ ...registrationData, ngay_du_kien_vao_o: e.target.value })}
                   className="pl-11 w-full p-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal shadow-sm focus:outline-none focus:border-[#00502B] focus:ring-4 focus:ring-[#00502B]/10 transition-all" 
+                  required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2">Lịch hẹn xem phòng</label>
+              <label className="block text-sm font-bold text-gray-800 mb-2">Lịch hẹn xem phòng <span className="text-red-500">*</span></label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#00502B]">
                   <Calendar size={18} className="text-gray-400 group-focus-within:text-[#00502B] transition-colors" />
@@ -140,19 +148,21 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
                   value={appointmentDate}
                   onChange={(e) => setAppointmentDate(e.target.value)}
                   className="pl-11 w-full p-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal shadow-sm focus:outline-none focus:border-[#00502B] focus:ring-4 focus:ring-[#00502B]/10 transition-all" 
+                  required
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-800 mb-2">Ghi chú thêm</label>
+            <label className="block text-sm font-bold text-gray-800 mb-2">Ghi chú thêm <span className="text-red-500">*</span></label>
             <textarea 
               rows={4}
               value={appointmentNote}
               onChange={(e) => setAppointmentNote(e.target.value)}
               className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal shadow-sm focus:outline-none focus:border-[#00502B] focus:ring-4 focus:ring-[#00502B]/10 transition-all" 
               placeholder="Nhập các yêu cầu đặc biệt hoặc lưu ý cho việc xếp phòng..."
+              required
             ></textarea>
           </div>
         </div>
@@ -165,8 +175,14 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
           </button>
           <button 
             onClick={onSubmit}
-            disabled={loading || data.length === 0}
-            className="bg-[#00502B] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#003d20] transition-colors flex items-center gap-2"
+            disabled={
+              loading || 
+              data.length === 0 || 
+              !registrationData.ngay_du_kien_vao_o || 
+              !appointmentDate || 
+              !appointmentNote
+            }
+            className="bg-[#00502B] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#003d20] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Đang xử lý...' : <><Check size={18} /> Hoàn tất</>}
           </button>
