@@ -15,11 +15,11 @@ INSERT INTO chi_nhanh (ten_chi_nhanh, dia_chi, so_dien_thoai) VALUES
 ('Chi nhánh 1 - Quận 10', '227 Nguyễn Văn Cừ, Phường 4, Quận 10, TP.HCM', '0123456789'),
 ('Chi nhánh 2 - Quận 7', 'Nguyễn Hữu Thọ, Tân Phong, Quận 7, TP.HCM', '0987654321');
 
--- 3. TÀI KHOẢN (Password hash tạm thời là hash của '123456' dùng bcrypt hoặc plain text tuỳ logic sau này, ở đây dùng tạm một chuỗi)
+-- 3. TÀI KHOẢN (Password hash là hash của 'Password@123' bằng bcrypt)
 INSERT INTO tai_khoan (username, password_hash, email, trang_thai, vai_tro_id) VALUES 
-('quanly01', '$2b$10$xyz', 'quanly1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='QUAN_LY')),
-('sale01', '$2b$10$xyz', 'sale1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='SALE')),
-('ketoan01', '$2b$10$xyz', 'ketoan1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='KE_TOAN'));
+('quanly01', '$2b$10$BpbLIP.vWBFVbRfW7b0Jne1hkbw7E07Zi5My50esdLUNUwtP1PoDe', 'quanly1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='QUAN_LY')),
+('sale01', '$2b$10$BpbLIP.vWBFVbRfW7b0Jne1hkbw7E07Zi5My50esdLUNUwtP1PoDe', 'sale1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='SALE')),
+('ketoan01', '$2b$10$BpbLIP.vWBFVbRfW7b0Jne1hkbw7E07Zi5My50esdLUNUwtP1PoDe', 'ketoan1@homestay.com', 'ACTIVE', (SELECT id FROM vai_tro WHERE ten_vai_tro='KE_TOAN'));
 
 -- 4. NHÂN VIÊN
 INSERT INTO nhan_vien (tai_khoan_id, chi_nhanh_id, ma_nhan_vien, ho_ten, gioi_tinh, ngay_sinh, so_dien_thoai, email, trang_thai) VALUES 

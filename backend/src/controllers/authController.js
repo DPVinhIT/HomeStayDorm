@@ -99,7 +99,7 @@ exports.refresh = (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
-    
+
     // Nếu verify thành công, cấp lại access token
     const accessToken = jwt.sign(
       { id: decoded.id, username: decoded.username, role: decoded.role },
@@ -110,5 +110,30 @@ exports.refresh = (req, res) => {
     res.json({ accessToken });
   } catch (error) {
     return res.status(403).json({ message: 'Refresh Token không hợp lệ hoặc đã hết hạn' });
+  }
+};
+
+exports.getMe = async (req, res) => {
+  const db = require('../config/db');
+  try {
+    const userId = req.user.id;
+    const query = `
+      SELECT t.id as account_id, t.username, t.email as account_email, t.trang_thai as account_status, v.ten_vai_tro as role,
+             n.id as employee_id, n.ma_nhan_vien, n.ho_ten, n.gioi_tinh, n.so_dien_thoai, n.email as employee_email, n.chi_nhanh_id
+      FROM tai_khoan t
+      JOIN vai_tro v ON t.vai_tro_id = v.id
+      LEFT JOIN nhan_vien n ON n.tai_khoan_id = t.id
+      WHERE t.id = $1
+    `;
+    const { rows } = await db.query(query, [userId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin user:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message, stack: error.stack });
   }
 };

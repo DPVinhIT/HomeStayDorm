@@ -17,6 +17,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
+const registrationRoutes = require('./routes/registrationRoutes');
+const customerRoutes = require('./routes/customerRoutes');
 const roomRoutes = require('./routes/roomRoutes');
 const contractRoutes = require('./routes/contractRoutes');
 const financeRoutes = require('./routes/financeRoutes');
@@ -24,6 +26,8 @@ const checkoutRoutes = require('./routes/checkoutRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/registration', registrationRoutes);
+app.use('/api/customers', customerRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/finances', financeRoutes);
