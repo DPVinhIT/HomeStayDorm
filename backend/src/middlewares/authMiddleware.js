@@ -2,6 +2,23 @@ const jwt = require('jsonwebtoken');
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'fallback_access_secret';
 
+const normalizeRole = (role) => {
+  if (!role) return '';
+
+  const normalized = String(role).trim().toUpperCase();
+  const roleMap = {
+    QUAN_LY: 'MANAGER',
+    QUANLY: 'MANAGER',
+    MANAGER: 'MANAGER',
+    SALE: 'SALE',
+    ADMIN: 'ADMIN',
+    KE_TOAN: 'ACCOUNTANT',
+    KETOAN: 'ACCOUNTANT',
+  };
+
+  return roleMap[normalized] || normalized;
+};
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) {
@@ -24,7 +41,10 @@ const verifyToken = (req, res, next) => {
 
 const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    const userRole = normalizeRole(req.user?.role);
+    const normalizedAllowedRoles = allowedRoles.map((role) => normalizeRole(role));
+
+    if (!req.user || !normalizedAllowedRoles.includes(userRole)) {
       return res.status(403).json({ message: 'Bạn không có quyền truy cập chức năng này' });
     }
     next();
@@ -33,5 +53,6 @@ const authorizeRoles = (...allowedRoles) => {
 
 module.exports = {
   verifyToken,
-  authorizeRoles
+  authorizeRoles,
+  normalizeRole,
 };
