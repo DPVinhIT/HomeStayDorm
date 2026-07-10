@@ -135,7 +135,10 @@ export default function RegistrationListPage() {
                 </tr>
               ) : (
                 filteredRegistrations.map((item: any) => (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                  <tr key={item.id} 
+                    // 3. Thêm sự kiện onClick và style con trỏ chuột vào thẻ <tr>
+                    onClick={() => router.push(`/sale/registration/${item.id}`)}
+                    className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
                     <td className="py-5 px-4 font-bold text-[#00502B]">#{item.ma_phieu}</td>
                     <td className="py-5 px-4 font-medium text-gray-800">{item.khach_hang_ten}</td>
                     <td className="py-5 px-4 text-gray-600">{item.loai_phong_mong_muon || 'Studio Premium'}</td>

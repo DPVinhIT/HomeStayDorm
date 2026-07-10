@@ -47,6 +47,9 @@ exports.login = async (req, res) => {
 
     const user = rows[0];
 
+    console.log("User:", user);
+console.log("Role gửi lên:", role);
+
     // 2. Kiểm tra vai trò
     if (user.role !== role) {
       return res.status(403).json({ message: 'Bạn không có quyền truy cập với vai trò này' });
@@ -59,6 +62,9 @@ exports.login = async (req, res) => {
 
     // 4. Kiểm tra mật khẩu
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    console.log("Password nhập:", password);
+console.log("Hash:", user.password_hash);
+console.log("Password đúng?", isValidPassword);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Tài khoản hoặc mật khẩu không chính xác' });
     }

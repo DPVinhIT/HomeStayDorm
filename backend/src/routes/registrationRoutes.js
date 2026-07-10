@@ -7,4 +7,10 @@ const { verifyToken, authorizeRoles } = require('../middlewares/authMiddleware')
 router.get('/', verifyToken, authorizeRoles('SALE', 'QUAN_LY', 'ADMIN'), registrationController.getAllRegistrations);
 router.post('/', verifyToken, authorizeRoles('SALE', 'QUAN_LY', 'ADMIN'), registrationController.createRegistration);
 
+router.get(
+    "/:id",
+    verifyToken,
+    authorizeRoles("SALE", "QUAN_LY", "ADMIN"),
+    registrationController.getRegistrationDetail
+);
 module.exports = router;
