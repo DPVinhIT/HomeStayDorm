@@ -1,22 +1,25 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { normalizeRole } = require('../middlewares/authMiddleware');
 
 // Secret keys from env or fallback
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'fallback_access_secret';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'fallback_refresh_secret';
 
 const generateTokens = (user) => {
+  const normalizedRole = normalizeRole(user.role);
+
   // Access Token: 15 minutes
   const accessToken = jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user.id, username: user.username, role: normalizedRole },
     ACCESS_TOKEN_SECRET,
     { expiresIn: '15m' }
   );
 
   // Refresh Token: 1 day
   const refreshToken = jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user.id, username: user.username, role: normalizedRole },
     REFRESH_TOKEN_SECRET,
     { expiresIn: '1d' }
   );
@@ -102,7 +105,7 @@ exports.refresh = (req, res) => {
 
     // Nếu verify thành công, cấp lại access token
     const accessToken = jwt.sign(
-      { id: decoded.id, username: decoded.username, role: decoded.role },
+      { id: decoded.id, username: decoded.username, role: normalizeRole(decoded.role) },
       ACCESS_TOKEN_SECRET,
       { expiresIn: '15m' }
     );
