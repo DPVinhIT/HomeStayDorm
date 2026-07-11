@@ -113,12 +113,11 @@ exports.createRegistration = async (req, res) => {
     client.release();
   }
 };
-
 exports.getRegistrationDetail = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Thông tin chính của phiếu đăng ký + khách hàng + sale + chi nhánh
+    // 1. Thông tin chính của phiếu đăng ký
     const mainQuery = `
       SELECT 
         p.*,
@@ -147,42 +146,50 @@ exports.getRegistrationDetail = async (req, res) => {
 
     const phieuDangKy = mainRows[0];
 
-    // 2. Chạy song song tất cả các truy vấn phụ thuộc còn lại để tối ưu tốc độ phản hồi
-    const [membersResult, appointmentsResult, depositsResult, contractsResult] = await Promise.all([
-      db.query(
-        `SELECT * FROM thanh_vien_o_cung WHERE phieu_dang_ky_id = $1 ORDER BY id ASC`,
-        [id]
-      ),
-      db.query(
-        `SELECT 
-           lh.*,
-           ph.ma_phong,
-           ph.loai_phong,
-           ph.gia_thue_thang AS phong_gia_thue,
-           nv.ho_ten AS nhan_vien_ten
-         FROM lich_hen lh
-         LEFT JOIN phong ph ON lh.phong_id = ph.id
-         LEFT JOIN nhan_vien nv ON lh.nhan_vien_id = nv.id
-         WHERE lh.phieu_dang_ky_id = $1
-         ORDER BY lh.thoi_gian_hen ASC`,
-        [id]
-      ),
-      db.query(
-        `SELECT * FROM don_dat_coc WHERE phieu_dang_ky_id = $1 ORDER BY created_at DESC`,
-        [id]
-      ),
-      db.query(
-        `SELECT * FROM hop_dong_thue WHERE phieu_dang_ky_id = $1`,
-        [id]
-      )
+    // 2. Thực hiện truy vấn song song. 
+    // CHÚ Ý: Phải khớp thứ tự giữa Promise.all và mảng biến bên trái
+    const [membersResult, depositsResult, appointmentsResult, contractsResult] = await Promise.all([
+      // 0: Thành viên
+      db.query(`SELECT * FROM thanh_vien_o_cung WHERE phieu_dang_ky_id = $1 ORDER BY id ASC`, [id]),
+      
+      // 1: Đơn đặt cọc (đúng vị trí của depositsResult)
+      db.query(`
+        SELECT 
+          dc.*, 
+          ph.ma_phong, 
+          g.ma_giuong, 
+          ph.gia_thue_thang AS phong_gia_thue,
+          g.gia_thue_thang AS giuong_gia_thue
+        FROM don_dat_coc dc
+        LEFT JOIN phong ph ON dc.phong_id = ph.id
+        LEFT JOIN giuong g ON dc.giuong_id = g.id
+        WHERE dc.phieu_dang_ky_id = $1
+      `, [id]),
+
+      // 2: Lịch hẹn (đúng vị trí của appointmentsResult)
+      db.query(`
+        SELECT 
+          lh.*, 
+          ph.ma_phong, 
+          ph.gia_thue_thang AS phong_gia_thue, 
+          g.ma_giuong,
+          g.gia_thue_thang AS giuong_gia_thue
+        FROM lich_hen lh
+        LEFT JOIN phong ph ON lh.phong_id = ph.id
+        LEFT JOIN giuong g ON lh.giuong_id = g.id
+        WHERE lh.phieu_dang_ky_id = $1
+      `, [id]),
+
+      // 3: Hợp đồng
+      db.query(`SELECT * FROM hop_dong_thue WHERE phieu_dang_ky_id = $1`, [id])
     ]);
 
-    // 3. Gộp dữ liệu và trả về cho client
+    // 3. Trả về kết quả với các biến đã khớp thứ tự
     res.json({
       ...phieuDangKy,
       thanh_vien_o_cung: membersResult.rows,
-      lich_hen: appointmentsResult.rows,
       don_dat_coc: depositsResult.rows,
+      lich_hen: appointmentsResult.rows,
       hop_dong: contractsResult.rows[0] || null,
     });
   } catch (error) {
