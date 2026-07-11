@@ -24,6 +24,7 @@ const contractRoutes = require('./routes/contractRoutes');
 const financeRoutes = require('./routes/financeRoutes');
 const checkoutRoutes = require('./routes/checkoutRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 const depositRoutes = require('./routes/depositRouters');
 
 app.use('/api/auth', authRoutes);
@@ -34,6 +35,7 @@ app.use('/api/contracts', contractRoutes);
 app.use('/api/finances', financeRoutes);
 app.use('/api/checkouts', checkoutRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/services', serviceRoutes);
 app.use('/api/deposits', depositRoutes);
 
 // Basic Health Check Route

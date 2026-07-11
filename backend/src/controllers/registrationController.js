@@ -113,3 +113,80 @@ exports.createRegistration = async (req, res) => {
     client.release();
   }
 };
+
+exports.getRegistrationDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Thông tin chính của phiếu đăng ký + khách hàng + sale + chi nhánh
+    const mainQuery = `
+      SELECT 
+        p.*,
+        k.ho_ten AS khach_hang_ten,
+        k.so_dien_thoai AS khach_hang_sdt,
+        k.email AS khach_hang_email,
+        k.cccd AS khach_hang_cccd,
+        k.ngay_sinh AS khach_hang_ngay_sinh,
+        k.gioi_tinh AS khach_hang_gioi_tinh,
+        k.dia_chi AS khach_hang_dia_chi,
+        k.quoc_tich AS khach_hang_quoc_tich,
+        k.nghe_nghiep AS khach_hang_nghe_nghiep,
+        nv.ho_ten AS nhan_vien_sale_ten,
+        cn.ten_chi_nhanh AS chi_nhanh_ten
+      FROM phieu_dang_ky_thue p
+      JOIN khach_hang k ON p.khach_hang_id = k.id
+      LEFT JOIN nhan_vien nv ON p.nhan_vien_sale_id = nv.id
+      LEFT JOIN chi_nhanh cn ON p.chi_nhanh_id = cn.id
+      WHERE p.id = $1
+    `;
+    const { rows: mainRows } = await db.query(mainQuery, [id]);
+
+    if (mainRows.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy phiếu đăng ký' });
+    }
+
+    const phieuDangKy = mainRows[0];
+
+    // 2. Chạy song song tất cả các truy vấn phụ thuộc còn lại để tối ưu tốc độ phản hồi
+    const [membersResult, appointmentsResult, depositsResult, contractsResult] = await Promise.all([
+      db.query(
+        `SELECT * FROM thanh_vien_o_cung WHERE phieu_dang_ky_id = $1 ORDER BY id ASC`,
+        [id]
+      ),
+      db.query(
+        `SELECT 
+           lh.*,
+           ph.ma_phong,
+           ph.loai_phong,
+           ph.gia_thue_thang AS phong_gia_thue,
+           nv.ho_ten AS nhan_vien_ten
+         FROM lich_hen lh
+         LEFT JOIN phong ph ON lh.phong_id = ph.id
+         LEFT JOIN nhan_vien nv ON lh.nhan_vien_id = nv.id
+         WHERE lh.phieu_dang_ky_id = $1
+         ORDER BY lh.thoi_gian_hen ASC`,
+        [id]
+      ),
+      db.query(
+        `SELECT * FROM don_dat_coc WHERE phieu_dang_ky_id = $1 ORDER BY created_at DESC`,
+        [id]
+      ),
+      db.query(
+        `SELECT * FROM hop_dong_thue WHERE phieu_dang_ky_id = $1`,
+        [id]
+      )
+    ]);
+
+    // 3. Gộp dữ liệu và trả về cho client
+    res.json({
+      ...phieuDangKy,
+      thanh_vien_o_cung: membersResult.rows,
+      lich_hen: appointmentsResult.rows,
+      don_dat_coc: depositsResult.rows,
+      hop_dong: contractsResult.rows[0] || null,
+    });
+  } catch (error) {
+    console.error('Error fetching registration detail:', error);
+    res.status(500).json({ message: 'Lỗi server khi lấy chi tiết phiếu đăng ký' });
+  }
+};
