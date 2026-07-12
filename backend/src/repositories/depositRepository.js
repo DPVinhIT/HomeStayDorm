@@ -11,6 +11,8 @@ const mapStatusToDisplay = (status) => {
     case 'HET_HAN':
       return 'Hết hạn';
     // Dự phòng các trạng thái cũ
+    case 'DA_PHE_DUYET':
+      return 'Đã phê duyệt';
     case 'DA_DUYET':
       return 'Đã duyệt';
     case 'TU_CHOI':

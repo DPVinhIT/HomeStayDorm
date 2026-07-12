@@ -271,27 +271,39 @@ return (
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* THANH HÀNH ĐỘNG CỐ ĐỊNH Ở DƯỚI CÙNG (STICKY ACTION BAR) */}
-      {data.trang_thai === 'Đã duyệt' && (
-        // Thêm md:left-20 lg:left-64 để đẩy thanh này lùi vào, nhường chỗ cho Sidebar bên trái
+      {data.trang_thai === 'Đã duyệt' && !data.hop_dong && (
         <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="hidden md:block">
               <p className="text-xs text-gray-400">Trạng thái hồ sơ hiện tại</p>
               <p className="text-sm font-bold text-gray-700 flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Sẵn sàng chuyển đổi hợp đồng
+                <span className={`w-2 h-2 rounded-full animate-pulse ${data.don_dat_coc?.[0]?.trang_thai === 'DA_PHE_DUYET' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                {data.don_dat_coc?.[0]?.trang_thai === 'DA_PHE_DUYET' 
+                  ? 'Sẵn sàng chuyển đổi hợp đồng'
+                  : (data.don_dat_coc?.[0]?.trang_thai === 'CHO_THANH_TOAN' ? 'Chờ Kế toán thu tiền cọc' : 'Chờ Quản lý duyệt phiếu cọc')
+                }
               </p>
             </div>
             
             {/* Cụm nút bấm hành động */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-              <button
-                onClick={() => router.push(`/sale/contract/create?registration_id=${data.id}`)}
-                className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
-              >
-                <FileText size={16} />
-                Lập hợp đồng thuê
-              </button>
+              {data.don_dat_coc?.[0]?.trang_thai === 'DA_PHE_DUYET' ? (
+                <button
+                  onClick={() => router.push(`/sale/contract/create?registration_id=${data.id}`)}
+                  className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
+                >
+                  <FileText size={16} />
+                  Lập hợp đồng thuê
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="px-6 py-2.5 bg-gray-200 text-gray-500 font-bold rounded-xl cursor-not-allowed text-sm flex items-center gap-2 w-full md:w-auto justify-center"
+                >
+                  <FileText size={16} />
+                  Chưa thể lập HĐ (Cọc chưa xong)
+                </button>
+              )}
             </div>
           </div>
         </div>

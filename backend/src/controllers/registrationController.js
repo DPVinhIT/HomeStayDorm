@@ -24,11 +24,30 @@ exports.getAllRegistrations = async (req, res) => {
 };
 
 exports.createRegistration = async (req, res) => {
-  const client = await db.pool.connect();
-  try {
-    await client.query('BEGIN'); // Bắt đầu transaction
-
     const { customer, registration, members, appointments } = req.body;
+
+    // 0. Verification - Kiểm tra dữ liệu đầu vào
+    if (customer) {
+      if (!customer.ho_ten || customer.ho_ten.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập họ và tên khách hàng.' });
+      }
+      if (!customer.so_dien_thoai || customer.so_dien_thoai.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập số điện thoại khách hàng.' });
+      }
+      if (customer.so_dien_thoai && !/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(customer.so_dien_thoai)) {
+        return res.status(400).json({ message: 'Số điện thoại không hợp lệ (Phải đúng định dạng SĐT Việt Nam, VD: 0912345678).' });
+      }
+      if (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+        return res.status(400).json({ message: 'Địa chỉ Email không hợp lệ.' });
+      }
+      if (customer.cccd && !/^[0-9]{9,12}$/.test(customer.cccd)) {
+        return res.status(400).json({ message: 'CCCD/CMND không hợp lệ (Phải chứa 9 hoặc 12 chữ số).' });
+      }
+    }
+
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN'); // Bắt đầu transaction
     
     // Lấy nhan_vien_id thực sự từ bảng nhan_vien dựa vào tai_khoan_id
     const { rows: nvRows } = await client.query('SELECT id FROM nhan_vien WHERE tai_khoan_id = $1', [req.user.id]);
@@ -55,14 +74,14 @@ exports.createRegistration = async (req, res) => {
     const maPhieu = generateMaPhieu();
     const insertRegistrationQuery = `
       INSERT INTO phieu_dang_ky_thue (
-        ma_phieu, khach_hang_id, nhan_vien_sale_id, hinh_thuc_thue, so_luong_nguoi, 
+        ma_phieu, khach_hang_id, nhan_vien_sale_id, chi_nhanh_id, hinh_thuc_thue, so_luong_nguoi, 
         gioi_tinh_nhom, khu_vuc_mong_muon, loai_phong_mong_muon, muc_gia_mong_muon, 
         ngay_du_kien_vao_o, thoi_han_thue_thang, tieu_chi_uu_tien, ghi_chu, trang_thai
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'CHO_XU_LY')
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'CHO_XU_LY')
       RETURNING id
     `;
     const regValues = [
-      maPhieu, khachHangId, sale_id, registration.hinh_thuc_thue, registration.so_luong_nguoi,
+      maPhieu, khachHangId, sale_id, registration.chi_nhanh_id || null, registration.hinh_thuc_thue, registration.so_luong_nguoi,
       registration.gioi_tinh_nhom, registration.khu_vuc_mong_muon, registration.loai_phong_mong_muon,
       registration.muc_gia_mong_muon || null, registration.ngay_du_kien_vao_o || null, 
       registration.thoi_han_thue_thang || null, registration.tieu_chi_uu_tien, registration.ghi_chu
@@ -101,6 +120,14 @@ exports.createRegistration = async (req, res) => {
         }
       }
     }
+
+    // 5. Tự động khởi tạo Yêu cầu đặt cọc (chờ Manager xếp phòng để tính tiền)
+    const maDonCoc = `DDC-${Date.now().toString().slice(-6)}`;
+    const insertDepositQuery = `
+      INSERT INTO don_dat_coc (ma_don_coc, phieu_dang_ky_id, trang_thai, created_by)
+      VALUES ($1, $2, 'KHOI_TAO', $3)
+    `;
+    await client.query(insertDepositQuery, [maDonCoc, phieuDangKyId, sale_id]);
 
     await client.query('COMMIT'); // Hoàn tất transaction
     res.status(201).json({ message: 'Tạo phiếu đăng ký thành công', ma_phieu: maPhieu });

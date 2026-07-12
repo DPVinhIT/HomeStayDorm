@@ -45,11 +45,14 @@ export default function DepositDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // State mock payment info
+  const [mockPayment, setMockPayment] = useState<{ method: string, fileName: string | null } | null>(null);
 
   // State quản lý Hộp thoại xác nhận (Modal)
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    status: 'DA_THANH_TOAN' | 'DA_HUY' | null;
+    status: 'DA_PHE_DUYET' | 'DA_HUY' | null;
     actionName: string;
   }>({
     isOpen: false,
@@ -90,6 +93,12 @@ export default function DepositDetailPage() {
   useEffect(() => {
     if (id) {
       fetchDepositDetail();
+      
+      // Load mock payment from localStorage
+      const savedMock = localStorage.getItem(`mock_payment_${id}`);
+      if (savedMock) {
+        try { setMockPayment(JSON.parse(savedMock)); } catch (e) {}
+      }
     }
   }, [id]);
 
@@ -112,7 +121,7 @@ export default function DepositDetailPage() {
         // MỞ POPUP THÀNH CÔNG
         setSuccessModal({
           isOpen: true,
-          message: `${newStatus === 'DA_THANH_TOAN' ? 'Phê duyệt' : 'Từ chối'} thành công!`
+          message: `${newStatus === 'DA_PHE_DUYET' ? 'Phê duyệt' : 'Từ chối'} thành công!`
         });
         
         // Tải lại dữ liệu
@@ -149,6 +158,7 @@ export default function DepositDetailPage() {
   }
 
   const isPending = data.trang_thai.toLowerCase().includes('chờ');
+  const canApprove = data.trang_thai === 'Đã thanh toán';
 
   return (
     <div className="p-8 bg-white min-h-screen relative pb-24">
@@ -254,30 +264,20 @@ export default function DepositDetailPage() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Đã thanh toán</span>
-              <span className="font-bold text-[#1a5d2b]">{formatCurrency(data.thanh_toan.da_thanh_toan)}</span>
+              <span className="font-bold text-[#1a5d2b]">{formatCurrency((canApprove || data.trang_thai === 'Đã phê duyệt') ? data.thanh_toan.tien_coc_yeu_cau : data.thanh_toan.da_thanh_toan)}</span>
             </div>
             <hr className="border-gray-200" />
             <div className="flex justify-between items-start pt-2">
               <span className="text-sm text-gray-600 w-24">Phương thức</span>
               <div className="flex items-center gap-2 text-right">
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                <span className="text-sm font-medium text-gray-900 whitespace-pre-line">{data.thanh_toan.phuong_thuc}</span>
+                <span className="text-sm font-medium text-gray-900 whitespace-pre-line">
+                  {(canApprove || data.trang_thai === 'Đã phê duyệt') 
+                    ? (mockPayment?.method || (data.thanh_toan.phuong_thuc !== 'Chưa có thông tin' ? data.thanh_toan.phuong_thuc : 'Tiền mặt'))
+                    : data.thanh_toan.phuong_thuc}
+                </span>
               </div>
             </div>
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-sm text-gray-600">Thời hạn giữ phòng</span>
-              <span className="text-sm font-medium text-red-500">{data.thanh_toan.thoi_han_giu_phong}</span>
-            </div>
-          </div>
-
-          <div className="bg-[#f0f4ec] rounded-lg p-4 mb-6">
-            <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
-              Ghi chú của khách:
-            </p>
-            <p className="text-sm font-medium text-[#2d4d32] italic">
-              "{data.thanh_toan.ghi_chu}"
-            </p>
           </div>
 
           <div className="mb-8">
@@ -285,7 +285,11 @@ export default function DepositDetailPage() {
             <div className="border border-gray-200 rounded-lg p-3 flex items-center justify-between bg-white">
               <div className="flex items-center gap-2 overflow-hidden">
                 <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                <span className="text-sm font-medium text-gray-700 truncate">{data.thanh_toan.chung_tu}</span>
+                <span className="text-sm font-medium text-gray-700 truncate">
+                  {(canApprove || data.trang_thai === 'Đã phê duyệt') && mockPayment?.fileName 
+                    ? mockPayment.fileName 
+                    : (data.thanh_toan.chung_tu || 'Chưa có chứng từ')}
+                </span>
               </div>
               <button className="text-gray-500 hover:text-black">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
@@ -296,21 +300,23 @@ export default function DepositDetailPage() {
           {/* Nút hành động */}
           <div>
             <p className="text-xs text-center text-gray-500 mb-3">
-              {isPending 
+              {canApprove 
                 ? "Vui lòng kiểm tra kỹ thông tin trước khi duyệt." 
-                : "Phiếu đặt cọc này đã được xử lý xong."}
+                : data.trang_thai.toLowerCase().includes('chờ')
+                  ? "Đang chờ kế toán thu tiền cọc."
+                  : "Phiếu đặt cọc này đã được xử lý xong."}
             </p>
             <div className="space-y-3">
               <button 
-                onClick={() => setConfirmModal({ isOpen: true, status: 'DA_THANH_TOAN', actionName: 'phê duyệt' })}
-                disabled={!isPending || isUpdating}
+                onClick={() => setConfirmModal({ isOpen: true, status: 'DA_PHE_DUYET', actionName: 'phê duyệt' })}
+                disabled={!canApprove || isUpdating}
                 className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
-                  isPending && !isUpdating
+                  canApprove && !isUpdating
                     ? "bg-[#11381d] text-white hover:bg-black" 
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                {isUpdating && confirmModal.status === 'DA_THANH_TOAN' ? 'Đang xử lý...' : (
+                {isUpdating && confirmModal.status === 'DA_PHE_DUYET' ? 'Đang xử lý...' : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                     Phê duyệt
@@ -320,9 +326,9 @@ export default function DepositDetailPage() {
               
               <button 
                 onClick={() => setConfirmModal({ isOpen: true, status: 'DA_HUY', actionName: 'từ chối' })}
-                disabled={!isPending || isUpdating}
+                disabled={!canApprove || isUpdating}
                 className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
-                  isPending && !isUpdating
+                  canApprove && !isUpdating
                     ? "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50" 
                     : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
@@ -357,8 +363,8 @@ export default function DepositDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`p-2 rounded-full ${confirmModal.status === 'DA_THANH_TOAN' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                {confirmModal.status === 'DA_THANH_TOAN' ? (
+              <div className={`p-2 rounded-full ${confirmModal.status === 'DA_PHE_DUYET' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                {confirmModal.status === 'DA_PHE_DUYET' ? (
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                 ) : (
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -381,7 +387,7 @@ export default function DepositDetailPage() {
               <button 
                 onClick={executeUpdateStatus}
                 className={`px-4 py-2 text-white rounded-lg transition text-sm font-medium ${
-                  confirmModal.status === 'DA_THANH_TOAN' 
+                  confirmModal.status === 'DA_PHE_DUYET' 
                     ? 'bg-[#11381d] hover:bg-black' 
                     : 'bg-red-600 hover:bg-red-700'
                 }`}
