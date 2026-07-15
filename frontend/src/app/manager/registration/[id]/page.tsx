@@ -133,9 +133,6 @@ export default function RegistrationDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-800">Chi tiết phiếu đăng ký</h1>
-            <span className="px-3 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-full">
-              {data.status}
-            </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -233,7 +230,7 @@ export default function RegistrationDetailPage() {
                 <div className="font-semibold text-gray-900">{data.room.type}</div>
               </div>
               <div className="border-b border-gray-100 pb-2">
-                <div className="text-sm text-gray-500 mb-1">Mức giá dự kiến</div>
+                <div className="text-sm text-gray-500 mb-1">Ngân sách dự kiến</div>
                 <div className="font-bold text-green-600 text-lg">{data.room.price}<span className="text-sm font-medium">/tháng</span></div>
               </div>
               <div className="border-b border-gray-100 pb-2">

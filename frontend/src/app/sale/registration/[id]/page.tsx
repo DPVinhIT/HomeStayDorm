@@ -32,17 +32,55 @@ export default function RegistrationDetailPage() {
     if (id) fetchDetail();
   }, [id]);
 
+  const formatStatus = (status: string) => {
+    if (!status) return 'N/A';
+    if (status === 'Đã duyệt') return 'Đã duyệt';
+    const statusMap: Record<string, string> = {
+      'KHOI_TAO': 'Khởi tạo',
+      'CHO_XAC_NHAN': 'Chờ xác nhận',
+      'DA_XAC_NHAN': 'Đã xác nhận',
+      'CHO_THANH_TOAN': 'Chờ thanh toán',
+      'DA_THANH_TOAN': 'Đã thanh toán',
+      'CHO_PHE_DUYET': 'Chờ phê duyệt',
+      'DA_PHE_DUYET': 'Đã duyệt',
+      'TU_CHOI': 'Từ chối',
+      'DA_HUY': 'Đã hủy',
+      'HOAN_THANH': 'Hoàn thành',
+      'DANG_THUC_HIEN': 'Đang thực hiện',
+      'CHO_XU_LY': 'Mới',
+      'DANG_XU_LY': 'Đang xử lý',
+      'DA_CHUYEN_DOI': 'Đã chuyển đổi',
+      'CHO_DUYET': 'Chờ duyệt',
+      'DA_DAT_COC': 'Đã đặt cọc',
+      'HET_HAN': 'Hết hạn',
+    };
+    return statusMap[status] || status;
+  };
+
   const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'CHO_XU_LY':
-        return <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Mới</span>;
-      case 'DANG_XU_LY':
-        return <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">Đang xử lý</span>;
-      case 'DA_CHUYEN_DOI':
-        return <span className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">Đã chuyển đổi</span>;
-      default:
-        return <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">{status}</span>;
+    const formatted = formatStatus(status);
+    let bg = 'bg-gray-100';
+    let text = 'text-gray-600';
+    const textLower = formatted.toLowerCase();
+
+    if (textLower === 'mới' || textLower.includes('đã duyệt') || textLower.includes('hoàn thành') || textLower.includes('đã đặt cọc') || textLower.includes('đã thanh toán') || textLower.includes('đã xác nhận')) {
+      bg = 'bg-green-100';
+      text = 'text-green-700';
+    } else if (textLower.includes('chờ') || textLower.includes('đang xử lý') || textLower.includes('khởi tạo')) {
+      bg = 'bg-amber-100';
+      text = 'text-amber-700';
+    } else if (textLower.includes('hủy') || textLower.includes('từ chối')) {
+      bg = 'bg-red-100';
+      text = 'text-red-700';
+    } else if (textLower.includes('đã chuyển đổi') || textLower.includes('đang thực hiện')) {
+      bg = 'bg-blue-100';
+      text = 'text-blue-700';
+    } else {
+      bg = 'bg-gray-200';
+      text = 'text-gray-700';
     }
+
+    return <span className={`px-3 py-1 ${bg} ${text} text-xs font-semibold rounded-full whitespace-nowrap`}>{formatted}</span>;
   };
 
   const formatCurrency = (amount: any) => {
@@ -196,7 +234,7 @@ return (
                       <span className="font-bold text-[#00502B]">Phòng: {a.ma_phong || 'Chưa xếp'}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${
                         a.trang_thai === 'CHO_XAC_NHAN' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
-                      }`}>{a.trang_thai}</span>
+                      }`}>{formatStatus(a.trang_thai)}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
                       <Clock size={12} />
@@ -223,7 +261,7 @@ return (
                   <div className="p-3 bg-green-50/60 border border-green-100 rounded-lg text-sm">
                     <div className="flex justify-between font-medium text-green-900">
                       <span>Mã cọc: #{data.don_dat_coc[0].ma_don_coc}</span>
-                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{data.don_dat_coc[0].trang_thai}</span>
+                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{formatStatus(data.don_dat_coc[0].trang_thai)}</span>
                     </div>
                     <p className="text-lg font-bold text-[#00502B] mt-1">{formatCurrency(data.don_dat_coc[0].so_tien_coc)}</p>
                     <p className="text-[11px] text-gray-400 mt-1">Ngày lập: {formatDate(data.don_dat_coc[0].created_at)}</p>
@@ -242,7 +280,7 @@ return (
                   <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg text-sm">
                     <div className="flex justify-between font-medium text-blue-900">
                       <span>Mã HĐ: #{data.hop_dong.ma_hop_dong}</span>
-                      <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{data.hop_dong.trang_thai}</span>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{formatStatus(data.hop_dong.trang_thai)}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-600">
                       <div>

@@ -242,7 +242,21 @@ export default function Step1Customer({ data, updateData, onNext, onCancel }: Pr
             { value: 'Ký túc xá', label: 'Ký túc xá' }
           ]}
         />
-        <InputField label="Mức giá mong muốn" icon={CreditCard} name="muc_gia_mong_muon" value={data.registration.muc_gia_mong_muon} onChange={handleRegistrationChange} placeholder="VD: 2000000" />
+        <InputField 
+          label="Mức giá mong muốn" 
+          icon={CreditCard} 
+          name="muc_gia_mong_muon" 
+          value={
+            data.registration.muc_gia_mong_muon 
+              ? Number(data.registration.muc_gia_mong_muon.toString().replace(/\D/g, '')).toLocaleString('vi-VN') 
+              : ''
+          } 
+          onChange={(e: any) => {
+            const rawValue = e.target.value.replace(/\D/g, '');
+            updateData('registration', { ...data.registration, muc_gia_mong_muon: rawValue });
+          }} 
+          placeholder="VD: 2.000.000" 
+        />
         <InputField type="number" label="Số lượng người ở" icon={User} name="so_luong_nguoi" value={data.registration.so_luong_nguoi} onChange={handleRegistrationChange} />
         <SelectField
           label="Giới tính nhóm"

@@ -139,6 +139,28 @@ export default function DepositDetailPage() {
     return value.toLocaleString('vi-VN') + ' đ';
   };
 
+  const formatStatus = (status: string) => {
+    if (!status) return 'N/A';
+    const statusMap: Record<string, string> = {
+      'KHOI_TAO': 'Khởi tạo',
+      'CHO_XAC_NHAN': 'Chờ xác nhận',
+      'DA_XAC_NHAN': 'Đã xác nhận',
+      'CHO_THANH_TOAN': 'Chờ thanh toán',
+      'DA_THANH_TOAN': 'Đã thanh toán',
+      'CHO_PHE_DUYET': 'Chờ phê duyệt',
+      'DA_PHE_DUYET': 'Đã phê duyệt',
+      'TU_CHOI': 'Từ chối',
+      'DA_HUY': 'Đã hủy',
+      'HOAN_THANH': 'Hoàn thành',
+      'DANG_THUC_HIEN': 'Đang thực hiện',
+      'CHO_XU_LY': 'Mới',
+      'DANG_XU_LY': 'Đang xử lý',
+      'DA_CHUYEN_DOI': 'Đã chuyển đổi',
+      'CHO_DUYET': 'Chờ duyệt',
+    };
+    return statusMap[status] || status;
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-gray-500">Đang tải chi tiết phiếu đặt cọc...</div>;
   }
@@ -179,7 +201,7 @@ export default function DepositDetailPage() {
                 ? 'bg-green-50 text-green-600 border-green-100'
                 : 'bg-red-50 text-red-600 border-red-100'
           }`}>
-            {data.trang_thai}
+            {formatStatus(data.trang_thai)}
           </span>
         </div>
         <p className="text-sm text-gray-500">

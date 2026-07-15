@@ -34,6 +34,13 @@ export default function AccountantDepositPage() {
           const amountStr = Number(item.so_tien || 0).toLocaleString('vi-VN') + ' đ';
           const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('vi-VN') : '';
           
+          let statusStr = 'pending';
+          if (['DA_THANH_TOAN', 'DA_PHE_DUYET', 'HOAN_THANH'].includes(item.trang_thai_code)) {
+            statusStr = 'approved';
+          } else if (['DA_HUY', 'TU_CHOI', 'HET_HAN'].includes(item.trang_thai_code)) {
+            statusStr = 'cancelled';
+          }
+          
           return {
             id: item.ma_don_coc,
             name: item.nguoi_dat || 'Không tên',
@@ -41,7 +48,7 @@ export default function AccountantDepositPage() {
             room: item.phong !== 'Chưa có phòng' ? `${item.phong} - ${item.toa_nha}` : 'Chưa xếp phòng',
             amount: amountStr,
             date: dateStr,
-            status: item.trang_thai_code === 'DA_THANH_TOAN' ? 'approved' : 'pending'
+            status: statusStr
           };
         });
         setData(mappedData);
@@ -165,9 +172,13 @@ export default function AccountantDepositPage() {
                         </svg>
                         Tạo phiếu thu
                       </button>
-                    ) : (
+                    ) : item.status === 'approved' ? (
                       <span className="bg-[#e2f0d9] text-[#385723] px-3 py-1.5 rounded-lg text-xs font-bold border border-[#c4dfb4] inline-flex items-center gap-1">
                         ✓ Đã thu
+                      </span>
+                    ) : (
+                      <span className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-100 inline-flex items-center gap-1">
+                        Đã hủy
                       </span>
                     )}
                   </td>

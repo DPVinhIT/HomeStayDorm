@@ -118,6 +118,13 @@ export default function DepositPage() {
     }
 
     return matchSearch && matchStatus && matchBranch && matchFloor;
+  }).sort((a, b) => {
+    const getScore = (status: string) => {
+      if (status === 'Đã thanh toán' || status === 'DA_THANH_TOAN') return 1;
+      if (status === 'Chờ thanh toán' || status === 'CHO_THANH_TOAN') return 2;
+      return 3;
+    };
+    return getScore(a.trang_thai) - getScore(b.trang_thai);
   });
 
   // 5. Pagination logic
@@ -129,6 +136,28 @@ export default function DepositPage() {
   const formatCurrency = (value: number) => {
     if (!Number.isFinite(value)) return '0';
     return value.toLocaleString('vi-VN');
+  };
+
+  const formatStatus = (status: string) => {
+    if (!status) return 'N/A';
+    const statusMap: Record<string, string> = {
+      'KHOI_TAO': 'Khởi tạo',
+      'CHO_XAC_NHAN': 'Chờ xác nhận',
+      'DA_XAC_NHAN': 'Đã xác nhận',
+      'CHO_THANH_TOAN': 'Chờ thanh toán',
+      'DA_THANH_TOAN': 'Đã thanh toán',
+      'CHO_PHE_DUYET': 'Chờ phê duyệt',
+      'DA_PHE_DUYET': 'Đã phê duyệt',
+      'TU_CHOI': 'Từ chối',
+      'DA_HUY': 'Đã hủy',
+      'HOAN_THANH': 'Hoàn thành',
+      'DANG_THUC_HIEN': 'Đang thực hiện',
+      'CHO_XU_LY': 'Mới',
+      'DANG_XU_LY': 'Đang xử lý',
+      'DA_CHUYEN_DOI': 'Đã chuyển đổi',
+      'CHO_DUYET': 'Chờ duyệt',
+    };
+    return statusMap[status] || status;
   };
 
   return (
@@ -261,7 +290,7 @@ export default function DepositPage() {
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        {item.trang_thai}
+                        {formatStatus(item.trang_thai)}
                       </span>
                     </td>
                   </tr>

@@ -64,7 +64,7 @@ const getAllDeposits = async (client = db, filters = {}) => {
     JOIN phieu_dang_ky_thue pdk ON dc.phieu_dang_ky_id = pdk.id
     JOIN khach_hang kh ON pdk.khach_hang_id = kh.id
     LEFT JOIN phong p ON dc.phong_id = p.id
-    LEFT JOIN chi_nhanh c ON p.chi_nhanh_id = c.id OR pdk.chi_nhanh_id = c.id
+    LEFT JOIN chi_nhanh c ON c.id = COALESCE(p.chi_nhanh_id, pdk.chi_nhanh_id)
     ${whereClause}
     ORDER BY dc.trang_thai, dc.created_at DESC
   `;
@@ -114,7 +114,7 @@ const getDepositById = async (client = db, id) => {
     JOIN phieu_dang_ky_thue pdk ON dc.phieu_dang_ky_id = pdk.id
     JOIN khach_hang kh ON pdk.khach_hang_id = kh.id
     LEFT JOIN phong p ON dc.phong_id = p.id
-    LEFT JOIN chi_nhanh c ON p.chi_nhanh_id = c.id OR pdk.chi_nhanh_id = c.id
+    LEFT JOIN chi_nhanh c ON c.id = COALESCE(p.chi_nhanh_id, pdk.chi_nhanh_id)
     
     -- Các JOIN mới thêm vào theo chuẩn Lược đồ
     LEFT JOIN nhan_vien nv ON dc.created_by = nv.id
