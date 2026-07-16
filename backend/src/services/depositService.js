@@ -160,6 +160,22 @@ const updateDepositStatus = async (id, payload, user) => {
       confirmedBy,
     });
 
+    if (payload.status === 'DA_THANH_TOAN' || payload.status === 'Đã thanh toán' || payload.status === 'DA_PHE_DUYET') {
+      if (updatedRow.giuong_id) {
+        await client.query("UPDATE giuong SET trang_thai = 'DA_THUE' WHERE id = $1", [updatedRow.giuong_id]);
+      } else if (updatedRow.phong_id) {
+        await client.query("UPDATE phong SET trang_thai = 'DA_THUE' WHERE id = $1", [updatedRow.phong_id]);
+        await client.query("UPDATE giuong SET trang_thai = 'DA_THUE' WHERE phong_id = $1", [updatedRow.phong_id]);
+      }
+    } else if (payload.status === 'DA_HUY' || payload.status === 'TU_CHOI' || payload.status === 'Đã hủy' || payload.status === 'Từ chối') {
+      if (updatedRow.giuong_id) {
+        await client.query("UPDATE giuong SET trang_thai = 'TRONG' WHERE id = $1", [updatedRow.giuong_id]);
+      } else if (updatedRow.phong_id) {
+        await client.query("UPDATE phong SET trang_thai = 'TRONG' WHERE id = $1", [updatedRow.phong_id]);
+        await client.query("UPDATE giuong SET trang_thai = 'TRONG' WHERE phong_id = $1", [updatedRow.phong_id]);
+      }
+    }
+
     await client.query('COMMIT');
     return { ...updatedRow }; // Trả về thông tin cơ bản sau khi update
   } catch (error) {

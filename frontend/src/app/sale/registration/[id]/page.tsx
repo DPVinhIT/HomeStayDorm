@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Calendar, User, Users, FileText, 
   CreditCard, Home, Mail, Phone, MapPin, 
-  Briefcase, Compass, DollarSign, Clock, Info
+  Briefcase, Compass, DollarSign, Clock, Info, CheckCircle2
 } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
@@ -14,32 +14,41 @@ export default function RegistrationDetailPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isCreatingDeposit, setIsCreatingDeposit] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const onCreateDeposit = async () => {
     try {
-      if (!data?.room?.phong_id) {
+      if (!data?.phong_id) {
         alert("Lỗi: Quản lý chưa xếp phòng chính thức.");
         return;
       }
       setIsCreatingDeposit(true);
       
-      const rawPrice = data.room.price ? parseInt(String(data.room.price).replace(/\D/g, '')) : 0;
+      let price = data.phong_duoc_gan_gia || data.giuong_duoc_gan_gia || data.muc_gia_mong_muon || 0;
+      let rawPrice = price ? parseFloat(String(price)) : 0;
+      if (isNaN(rawPrice) || rawPrice <= 0) {
+        alert("Lỗi: Không thể xác định giá thuê để tính tiền cọc (giá = 0). Vui lòng cập nhật giá phòng hoặc ngân sách.");
+        setIsCreatingDeposit(false);
+        return;
+      }
+      
       const soTienCoc = rawPrice * 2;
 
       const payload = {
         phieu_dang_ky_id: data.id,
-        phong_id: data.room.phong_id,
-        giuong_id: data.room.giuong_id || null,
+        phong_id: data.phong_id,
+        giuong_id: data.giuong_id || null,
         so_tien_coc: soTienCoc,
         han_thanh_toan: new Date(Date.now() + 86400000).toISOString() // + 1 day
       };
 
       await axiosInstance.post('/deposits', payload);
-      alert('Tạo đơn đặt cọc thành công! Kế toán đã nhận được yêu cầu.');
+      setShowSuccessModal(true);
       fetchDetail();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Lỗi tạo đơn đặt cọc.');
+      const msg = err.response?.data?.message || err.message || JSON.stringify(err);
+      alert(`Lỗi tạo đơn đặt cọc: ${msg}`);
     } finally {
       setIsCreatingDeposit(false);
     }
@@ -259,21 +268,24 @@ return (
               <p className="text-gray-400 text-sm italic">Chưa lên lịch hẹn xem phòng.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {data.lich_hen.map((a: any) => (
+                {data.lich_hen.map((a: any) => {
+                  const isCompleted = (data.don_dat_coc && data.don_dat_coc.length > 0) || data.hop_dong;
+                  return (
                   <div key={a.id} className="p-3.5 border border-gray-100 rounded-lg bg-gray-50/50 hover:border-gray-200 transition-all text-sm">
                     <div className="flex justify-between items-start mb-1.5">
                       <span className="font-bold text-[#00502B]">Phòng: {a.ma_phong || 'Chưa xếp'}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${
+                        isCompleted ? 'bg-green-100 text-green-700' :
                         a.trang_thai === 'CHO_XAC_NHAN' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
-                      }`}>{formatStatus(a.trang_thai)}</span>
+                      }`}>{isCompleted ? 'Thành công' : formatStatus(a.trang_thai)}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
                       <Clock size={12} />
                       <span>{new Date(a.thoi_gian_hen).toLocaleString('vi-VN')}</span>
                     </div>
-                    <p className="text-xs text-gray-400">Loại: {a.loai_phong || 'N/A'} - {formatCurrency(a.phong_gia_thue)}/tháng</p>
+                    <p className="text-xs text-gray-400">Loại: {a.loai_phong || data.loai_phong_mong_muon || 'N/A'} - {formatCurrency(a.phong_gia_thue)}/tháng</p>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
@@ -340,7 +352,7 @@ return (
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* THANH HÀNH ĐỘNG CỐ ĐỊNH Ở DƯỚI CÙNG (STICKY ACTION BAR) */}
-      {data.trang_thai === 'Đã duyệt' && !data.hop_dong && (
+      {data.trang_thai === 'Đã duyệt' && (!data.don_dat_coc || data.don_dat_coc.length === 0) && !data.hop_dong && (
         <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="hidden md:block">
@@ -374,21 +386,13 @@ return (
                   <DollarSign size={16} />
                   {isCreatingDeposit ? 'Đang tạo...' : 'Tạo phiếu đặt cọc'}
                 </button>
-              ) : (data.don_dat_coc[0].trang_thai === 'DA_PHE_DUYET' || data.don_dat_coc[0].trang_thai === 'Đã phê duyệt') ? (
-                <button
-                  onClick={() => router.push(`/sale/contract/create?registration_id=${data.id}`)}
-                  className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
-                >
-                  <FileText size={16} />
-                  Lập hợp đồng thuê
-                </button>
               ) : (
                 <button
-                  disabled
-                  className="px-6 py-2.5 bg-gray-200 text-gray-500 font-bold rounded-xl cursor-not-allowed text-sm flex items-center gap-2 w-full md:w-auto justify-center"
+                  onClick={() => router.push(`/sale/deposit`)}
+                  className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
                 >
                   <FileText size={16} />
-                  Chưa thể lập HĐ (Cọc chưa xong)
+                  Xem danh sách Phiếu Đặt Cọc
                 </button>
               )}
             </div>
@@ -396,6 +400,38 @@ return (
         </div>
       )}
       {/* ───────────────────────────────────────────────────────────────── */}
+
+    {/* POP-UP SUCCESS MODAL */}
+    {showSuccessModal && (
+      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+        <div className="bg-white p-10 rounded-xl shadow-xl border border-slate-100 flex flex-col items-center justify-center text-center max-w-lg w-full animate-in fade-in zoom-in duration-300">
+          <div className="h-20 w-20 bg-green-50 rounded-full flex items-center justify-center mb-5">
+            <CheckCircle2 size={48} className="text-[#00502B]" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Tạo đơn đặt cọc thành công!</h2>
+          <p className="text-slate-500 mb-8 text-[14px] leading-relaxed">
+            Yêu cầu tạo đơn đặt cọc cho phiếu đăng ký <strong className="text-slate-700">#{data?.ma_phieu}</strong> đã được gửi đến Kế toán.
+          </p>
+          <div className="flex gap-3 w-full">
+            <button 
+              onClick={() => {
+                setShowSuccessModal(false);
+                router.push('/sale/deposit');
+              }}
+              className="flex-1 bg-white border border-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm"
+            >
+              Chuyển đến Phiếu đặt cọc
+            </button>
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="flex-1 bg-[#00502B] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#003d20] transition-colors shadow-md text-sm"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     </div>
   );

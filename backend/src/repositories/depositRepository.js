@@ -66,7 +66,7 @@ const getAllDeposits = async (client = db, filters = {}) => {
     LEFT JOIN phong p ON dc.phong_id = p.id
     LEFT JOIN chi_nhanh c ON c.id = COALESCE(p.chi_nhanh_id, pdk.chi_nhanh_id)
     ${whereClause}
-    ORDER BY dc.trang_thai, dc.created_at DESC
+    ORDER BY dc.created_at DESC
   `;
 
   const result = await client.query(query, params);

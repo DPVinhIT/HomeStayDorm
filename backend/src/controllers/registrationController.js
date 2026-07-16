@@ -37,11 +37,23 @@ exports.createRegistration = async (req, res) => {
       if (customer.so_dien_thoai && !/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(customer.so_dien_thoai)) {
         return res.status(400).json({ message: 'Số điện thoại không hợp lệ (Phải đúng định dạng SĐT Việt Nam, VD: 0912345678).' });
       }
-      if (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+      if (!customer.cccd || customer.cccd.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập CCCD/CMND khách hàng.' });
+      }
+      if (!/^[0-9]{9,12}$/.test(customer.cccd)) {
+        return res.status(400).json({ message: 'CCCD/CMND không hợp lệ (Phải chứa 9 hoặc 12 chữ số).' });
+      }
+      if (!customer.email || customer.email.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập địa chỉ Email khách hàng.' });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
         return res.status(400).json({ message: 'Địa chỉ Email không hợp lệ.' });
       }
-      if (customer.cccd && !/^[0-9]{9,12}$/.test(customer.cccd)) {
-        return res.status(400).json({ message: 'CCCD/CMND không hợp lệ (Phải chứa 9 hoặc 12 chữ số).' });
+      if (!customer.dia_chi || customer.dia_chi.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập địa chỉ thường trú khách hàng.' });
+      }
+      if (!customer.ngay_sinh || customer.ngay_sinh.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng chọn ngày sinh khách hàng.' });
       }
     }
 
@@ -162,11 +174,17 @@ exports.getRegistrationDetail = async (req, res) => {
         k.quoc_tich AS khach_hang_quoc_tich,
         k.nghe_nghiep AS khach_hang_nghe_nghiep,
         nv.ho_ten AS nhan_vien_sale_ten,
-        cn.ten_chi_nhanh AS chi_nhanh_ten
+        cn.ten_chi_nhanh AS chi_nhanh_ten,
+        ph.ma_phong AS phong_duoc_gan_ma,
+        ph.gia_thue_thang AS phong_duoc_gan_gia,
+        g.ma_giuong AS giuong_duoc_gan_ma,
+        g.gia_thue_thang AS giuong_duoc_gan_gia
       FROM phieu_dang_ky_thue p
       JOIN khach_hang k ON p.khach_hang_id = k.id
       LEFT JOIN nhan_vien nv ON p.nhan_vien_sale_id = nv.id
       LEFT JOIN chi_nhanh cn ON p.chi_nhanh_id = cn.id
+      LEFT JOIN phong ph ON p.phong_id = ph.id
+      LEFT JOIN giuong g ON p.giuong_id = g.id
       WHERE p.id = $1
     `;
     const { rows: mainRows } = await db.query(mainQuery, [id]);

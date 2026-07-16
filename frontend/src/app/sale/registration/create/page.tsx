@@ -63,9 +63,9 @@ export default function CreateRegistrationPage() {
       setLoading(true);
       await axiosInstance.post('/registration', formData);
       setIsSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submit error:', error);
-      alert('Có lỗi xảy ra khi tạo phiếu đăng ký.');
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi tạo phiếu đăng ký.');
     } finally {
       setLoading(false);
     }

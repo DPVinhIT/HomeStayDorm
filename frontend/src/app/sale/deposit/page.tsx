@@ -115,13 +115,6 @@ export default function DepositPage() {
     }
 
     return matchSearch && matchStatus && matchBranch && matchFloor;
-  }).sort((a, b) => {
-    const getScore = (status: string) => {
-      if (status === 'Đã thanh toán' || status === 'DA_THANH_TOAN') return 1;
-      if (status === 'Chờ thanh toán' || status === 'CHO_THANH_TOAN') return 2;
-      return 3;
-    };
-    return getScore(a.trang_thai) - getScore(b.trang_thai);
   });
 
   // 5. Pagination logic
