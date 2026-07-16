@@ -78,6 +78,7 @@ const getDepositById = async (client = db, id) => {
     SELECT
       -- 1. Thông tin chung phiếu cọc
       dc.id,
+      dc.phieu_dang_ky_id,
       dc.ma_don_coc,
       dc.so_tien_coc,
       dc.han_thanh_toan,

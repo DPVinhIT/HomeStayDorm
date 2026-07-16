@@ -13,6 +13,37 @@ export default function RegistrationDetailPage() {
   const { id } = useParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isCreatingDeposit, setIsCreatingDeposit] = useState(false);
+
+  const onCreateDeposit = async () => {
+    try {
+      if (!data?.room?.phong_id) {
+        alert("Lỗi: Quản lý chưa xếp phòng chính thức.");
+        return;
+      }
+      setIsCreatingDeposit(true);
+      
+      const rawPrice = data.room.price ? parseInt(String(data.room.price).replace(/\D/g, '')) : 0;
+      const soTienCoc = rawPrice * 2;
+
+      const payload = {
+        phieu_dang_ky_id: data.id,
+        phong_id: data.room.phong_id,
+        giuong_id: data.room.giuong_id || null,
+        so_tien_coc: soTienCoc,
+        han_thanh_toan: new Date(Date.now() + 86400000).toISOString() // + 1 day
+      };
+
+      await axiosInstance.post('/deposits', payload);
+      alert('Tạo đơn đặt cọc thành công! Kế toán đã nhận được yêu cầu.');
+      fetchDetail();
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi tạo đơn đặt cọc.');
+    } finally {
+      setIsCreatingDeposit(false);
+    }
+  };
 
   const fetchDetail = async () => {
     try {
@@ -315,17 +346,35 @@ return (
             <div className="hidden md:block">
               <p className="text-xs text-gray-400">Trạng thái hồ sơ hiện tại</p>
               <p className="text-sm font-bold text-gray-700 flex items-center gap-1.5 mt-0.5">
-                <span className={`w-2 h-2 rounded-full animate-pulse ${data.don_dat_coc?.[0]?.trang_thai === 'DA_PHE_DUYET' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
-                {data.don_dat_coc?.[0]?.trang_thai === 'DA_PHE_DUYET' 
-                  ? 'Sẵn sàng chuyển đổi hợp đồng'
-                  : (data.don_dat_coc?.[0]?.trang_thai === 'CHO_THANH_TOAN' ? 'Chờ Kế toán thu tiền cọc' : 'Chờ Quản lý duyệt phiếu cọc')
-                }
+                {(!data.don_dat_coc || data.don_dat_coc.length === 0) ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    Sẵn sàng tạo Đơn đặt cọc
+                  </>
+                ) : (
+                  <>
+                    <span className={`w-2 h-2 rounded-full animate-pulse ${(data.don_dat_coc[0].trang_thai === 'DA_PHE_DUYET' || data.don_dat_coc[0].trang_thai === 'Đã phê duyệt') ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+                    {(data.don_dat_coc[0].trang_thai === 'DA_PHE_DUYET' || data.don_dat_coc[0].trang_thai === 'Đã phê duyệt')
+                      ? 'Sẵn sàng lập hợp đồng thuê'
+                      : (data.don_dat_coc[0].trang_thai === 'CHO_THANH_TOAN' ? 'Chờ Kế toán thu tiền cọc' : 'Chờ Quản lý duyệt phiếu cọc')
+                    }
+                  </>
+                )}
               </p>
             </div>
             
             {/* Cụm nút bấm hành động */}
             <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-              {data.don_dat_coc?.[0]?.trang_thai === 'DA_PHE_DUYET' ? (
+              {(!data.don_dat_coc || data.don_dat_coc.length === 0) ? (
+                <button
+                  onClick={onCreateDeposit}
+                  disabled={isCreatingDeposit}
+                  className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
+                >
+                  <DollarSign size={16} />
+                  {isCreatingDeposit ? 'Đang tạo...' : 'Tạo phiếu đặt cọc'}
+                </button>
+              ) : (data.don_dat_coc[0].trang_thai === 'DA_PHE_DUYET' || data.don_dat_coc[0].trang_thai === 'Đã phê duyệt') ? (
                 <button
                   onClick={() => router.push(`/sale/contract/create?registration_id=${data.id}`)}
                   className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"

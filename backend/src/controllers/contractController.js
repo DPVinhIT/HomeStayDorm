@@ -257,23 +257,8 @@ exports.updateRegistrationStatus = async (req, res) => {
 
     const updatedReg = rows[0];
 
-    // Xử lý tự động cập nhật Phiếu Đặt Cọc (don_dat_coc) khi phiếu được Duyệt và Xếp phòng
-    if (status === 'Đã duyệt' && phong_id) {
-      // Lấy thông tin phòng để tính tiền cọc
-      const roomRes = await db.query('SELECT gia_thue_thang FROM phong WHERE id = $1', [phong_id]);
-      if (roomRes.rows.length > 0) {
-        const giaThue = Number(roomRes.rows[0].gia_thue_thang);
-        const tienCoc = giaThue * 2; // Tiền cọc mặc định = 2 tháng tiền phòng
-
-        // Cập nhật phiếu đặt cọc tương ứng (chuyển sang CHO_THANH_TOAN để Kế toán thấy)
-        await db.query(`
-          UPDATE don_dat_coc
-          SET phong_id = $1, giuong_id = $2, so_tien_coc = $3, trang_thai = 'CHO_THANH_TOAN'
-          WHERE phieu_dang_ky_id = $4 AND trang_thai = 'KHOI_TAO'
-        `, [phong_id, giuong_id || null, tienCoc, updatedReg.id]);
-      }
-    }
-
+    // [ĐÃ BỎ] Không cập nhật tự động Phiếu Đặt Cọc (don_dat_coc) nữa vì chưa được tạo. Sale sẽ tạo thủ công.
+    
     res.status(200).json({
       status: 'success',
       message: 'Cập nhật trạng thái thành công',
@@ -427,9 +412,9 @@ exports.createContract = async (req, res) => {
     const existingDeposit = await client.query('SELECT trang_thai FROM don_dat_coc WHERE phieu_dang_ky_id = $1', [phieu_dang_ky_id]);
     if (existingDeposit.rows.length > 0) {
       const depositStatus = existingDeposit.rows[0].trang_thai;
-      if (depositStatus !== 'DA_PHE_DUYET') {
+      if (depositStatus !== 'DA_PHE_DUYET' && depositStatus !== 'Đã phê duyệt') {
         await client.query('ROLLBACK');
-        return res.status(400).json({ success: false, message: 'Không thể lập hợp đồng vì Tiền cọc chưa được phê duyệt!' });
+        return res.status(400).json({ success: false, message: 'Không thể lập hợp đồng vì Tiền cọc chưa được quản lý phê duyệt!' });
       }
     }
 

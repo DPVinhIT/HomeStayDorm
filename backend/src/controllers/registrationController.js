@@ -55,19 +55,29 @@ exports.createRegistration = async (req, res) => {
 
     let khachHangId = customer.id;
 
-    // 1. Tạo mới Khách hàng nếu chưa có ID
+    // 1. Tạo mới hoặc cập nhật Khách hàng nếu chưa có ID
     if (!khachHangId) {
-      const insertCustomerQuery = `
+      const upsertCustomerQuery = `
         INSERT INTO khach_hang (ho_ten, ngay_sinh, gioi_tinh, cccd, so_dien_thoai, email, dia_chi, quoc_tich, nghe_nghiep)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (cccd) 
+        DO UPDATE SET 
+          ho_ten = EXCLUDED.ho_ten,
+          ngay_sinh = EXCLUDED.ngay_sinh,
+          gioi_tinh = EXCLUDED.gioi_tinh,
+          so_dien_thoai = EXCLUDED.so_dien_thoai,
+          email = EXCLUDED.email,
+          dia_chi = EXCLUDED.dia_chi,
+          quoc_tich = EXCLUDED.quoc_tich,
+          nghe_nghiep = EXCLUDED.nghe_nghiep
         RETURNING id
       `;
       const customerValues = [
         customer.ho_ten, customer.ngay_sinh || null, customer.gioi_tinh, customer.cccd, 
         customer.so_dien_thoai, customer.email, customer.dia_chi, customer.quoc_tich, customer.nghe_nghiep
       ];
-      const { rows: newCustomer } = await client.query(insertCustomerQuery, customerValues);
-      khachHangId = newCustomer[0].id;
+      const { rows: upsertedCustomer } = await client.query(upsertCustomerQuery, customerValues);
+      khachHangId = upsertedCustomer[0].id;
     }
 
     // 2. Tạo Phiếu đăng ký thuê
@@ -121,13 +131,7 @@ exports.createRegistration = async (req, res) => {
       }
     }
 
-    // 5. Tự động khởi tạo Yêu cầu đặt cọc (chờ Manager xếp phòng để tính tiền)
-    const maDonCoc = `DDC-${Date.now().toString().slice(-6)}`;
-    const insertDepositQuery = `
-      INSERT INTO don_dat_coc (ma_don_coc, phieu_dang_ky_id, trang_thai, created_by)
-      VALUES ($1, $2, 'KHOI_TAO', $3)
-    `;
-    await client.query(insertDepositQuery, [maDonCoc, phieuDangKyId, sale_id]);
+    // 5. [ĐÃ BỎ] Không tự động khởi tạo Yêu cầu đặt cọc nữa. Sale sẽ tự tạo sau khi Quản lý duyệt.
 
     await client.query('COMMIT'); // Hoàn tất transaction
     res.status(201).json({ message: 'Tạo phiếu đăng ký thành công', ma_phieu: maPhieu });

@@ -47,6 +47,8 @@ const normalizeDepositDetail = (row) => {
   };
 
   return {
+    id: row.id,
+    phieu_dang_ky_id: row.phieu_dang_ky_id,
     ma_phieu: row.ma_don_coc,
     ngay_tao: formatDate(row.created_at),
     nguoi_tao: row.nguoi_tao || 'Hệ thống',
@@ -117,7 +119,7 @@ const createDeposit = async (payload, user) => {
       soGiuongThue: payload.so_giuong_thue || null,
       soTienCoc: Number(payload.so_tien_coc),
       hanThanhToan: payload.han_thanh_toan || null,
-      status: 'CHO_XU_LY',
+      status: 'CHO_THANH_TOAN', // Đẩy thẳng sang Kế toán
       createdBy,
     });
 
