@@ -320,20 +320,22 @@ export default function DepositDetailPage() {
           </div>
 
           {/* Nút hành động */}
+                    {/* Nút hành động */}
           <div>
             <p className="text-xs text-center text-gray-500 mb-3">
-              {canApprove 
-                ? "Vui lòng kiểm tra kỹ thông tin trước khi duyệt." 
-                : data.trang_thai.toLowerCase().includes('chờ')
-                  ? "Đang chờ kế toán thu tiền cọc."
-                  : "Phiếu đặt cọc này đã được xử lý xong."}
+              {data.trang_thai.toLowerCase().includes('chờ')
+                ? "Vui lòng kiểm tra kỹ thông tin trước khi duyệt."
+                : "Phiếu đặt cọc này đã được xử lý xong."}
             </p>
+            
             <div className="space-y-3">
+              {/* Nút Phê duyệt */}
               <button 
                 onClick={() => setConfirmModal({ isOpen: true, status: 'DA_PHE_DUYET', actionName: 'phê duyệt' })}
-                disabled={!canApprove || isUpdating}
+                // Chỉ cho phép click nếu đang ở trạng thái 'chờ' VÀ không trong quá trình loading
+                disabled={!data.trang_thai.toLowerCase().includes('chờ') || isUpdating}
                 className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
-                  canApprove && !isUpdating
+                  data.trang_thai.toLowerCase().includes('chờ') && !isUpdating
                     ? "bg-[#11381d] text-white hover:bg-black" 
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
@@ -346,11 +348,13 @@ export default function DepositDetailPage() {
                 )}
               </button>
               
+              {/* Nút Từ chối */}
               <button 
                 onClick={() => setConfirmModal({ isOpen: true, status: 'DA_HUY', actionName: 'từ chối' })}
-                disabled={!canApprove || isUpdating}
+                // Chỉ cho phép click nếu đang ở trạng thái 'chờ' VÀ không trong quá trình loading
+                disabled={!data.trang_thai.toLowerCase().includes('chờ') || isUpdating}
                 className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
-                  canApprove && !isUpdating
+                  data.trang_thai.toLowerCase().includes('chờ') && !isUpdating
                     ? "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50" 
                     : "bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
