@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Calendar, User, Users, FileText, 
   CreditCard, Home, Mail, Phone, MapPin, 
-  Briefcase, Compass, DollarSign, Clock, Info, CheckCircle2
+  Briefcase, Compass, DollarSign, Clock, Info, CheckCircle2, Edit3
 } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
@@ -367,6 +367,7 @@ return (
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* THANH HÀNH ĐỘNG CỐ ĐỊNH Ở DƯỚI CÙNG (STICKY ACTION BAR) */}
+      
       {data.trang_thai === 'Đã duyệt' && (
         // Thêm md:left-20 lg:left-64 để đẩy thanh này lùi vào, nhường chỗ cho Sidebar bên trái
         <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
@@ -426,6 +427,13 @@ return (
       </div>
     )}
 
+      <button
+        onClick={() => router.push(`/sale/registration/create?registration_id=${data.id}`)}
+        className="fixed bottom-24 right-6 z-50 inline-flex items-center gap-2 rounded-full bg-[#00502B] px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/10 transition hover:bg-[#003d20] focus:outline-none focus:ring-2 focus:ring-[#00502B]/50"
+      >
+        <Edit3 size={16} />
+        Chỉnh sửa
+      </button>
     </div>
   );
 }
