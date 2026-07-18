@@ -4,7 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Calendar, User, Users, FileText, 
   CreditCard, Home, Mail, Phone, MapPin, 
-  Briefcase, Compass, DollarSign, Clock, Info
+  Briefcase, Compass, DollarSign, Clock, Info,
+  CalendarPlus, Pencil
 } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
@@ -73,6 +74,10 @@ export default function RegistrationDetailPage() {
       </div>
     );
   }
+
+  const hasNoAppointment = !data.lich_hen || data.lich_hen.length === 0;
+  const isApproved = data.trang_thai === 'Đã duyệt';
+
 return (
     <div className="max-w-7xl mx-auto pb-24 relative"> {/* Tăng pb-12 thành pb-24 để không bị thanh bottom che mất nội dung */}
       {/* Nút Quay Lại & Tiêu đề chính */}
@@ -183,10 +188,21 @@ return (
           
           {/* Khối 4: Lịch hẹn xem phòng */}
           <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b border-gray-50 pb-3">
-              <Calendar size={18} className="text-[#00502B]" /> Lịch xem phòng ({data.lich_hen?.length || 0})
-            </h2>
-            {(!data.lich_hen || data.lich_hen.length === 0) ? (
+            <div className="flex items-center justify-between mb-4 border-b border-gray-50 pb-3">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <Calendar size={18} className="text-[#00502B]" /> Lịch xem phòng ({data.lich_hen?.length || 0})
+              </h2>
+              {hasNoAppointment && (
+                <button
+                  onClick={() => router.push(`/sale/appointment/create?registration_id=${data.id}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00502B]/10 text-[#00502B] text-xs font-semibold rounded-lg hover:bg-[#00502B]/20 transition-colors"
+                >
+                  <CalendarPlus size={14} />
+                  Hẹn lịch xem phòng
+                </button>
+              )}
+            </div>
+            {hasNoAppointment ? (
               <p className="text-gray-400 text-sm italic">Chưa lên lịch hẹn xem phòng.</p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -271,31 +287,38 @@ return (
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* THANH HÀNH ĐỘNG CỐ ĐỊNH Ở DƯỚI CÙNG (STICKY ACTION BAR) */}
-      {data.trang_thai === 'Đã duyệt' && (
-        // Thêm md:left-20 lg:left-64 để đẩy thanh này lùi vào, nhường chỗ cho Sidebar bên trái
-        <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="hidden md:block">
-              <p className="text-xs text-gray-400">Trạng thái hồ sơ hiện tại</p>
-              <p className="text-sm font-bold text-gray-700 flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                Sẵn sàng chuyển đổi hợp đồng
-              </p>
-            </div>
-            
-            {/* Cụm nút bấm hành động */}
-            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+      {/* Luôn hiển thị để có nút Chỉnh sửa; nút Lập hợp đồng chỉ hiện khi đã duyệt */}
+      <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="hidden md:block">
+            <p className="text-xs text-gray-400">Trạng thái hồ sơ hiện tại</p>
+            <p className="text-sm font-bold text-gray-700 flex items-center gap-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full ${isApproved ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+              {isApproved ? 'Sẵn sàng chuyển đổi hợp đồng' : data.trang_thai}
+            </p>
+          </div>
+          
+          {/* Cụm nút bấm hành động */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <button
+              onClick={() => router.push(`/sale/registration/edit?id=${data.id}`)}
+              className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 shadow-sm hover:shadow-md active:scale-[0.98] transition-all text-sm flex items-center gap-2 justify-center"
+            >
+              <Pencil size={16} />
+              Chỉnh sửa
+            </button>
+            {isApproved && (
               <button
                 onClick={() => router.push(`/sale/contract/create?registration_id=${data.id}`)}
-                className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
+                className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 justify-center"
               >
                 <FileText size={16} />
                 Lập hợp đồng thuê
               </button>
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
       {/* ───────────────────────────────────────────────────────────────── */}
 
     </div>
