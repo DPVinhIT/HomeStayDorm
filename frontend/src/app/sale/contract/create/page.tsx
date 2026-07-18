@@ -8,7 +8,7 @@ import {
   Wifi, Car, BookOpen, AlertTriangle, Scale,
   Phone, Mail, Fingerprint, MapPin, Briefcase,
   BedDouble, Building2, Wallet, ChevronRight, ShieldCheck,
-  ChevronDown, ChevronUp, Printer, Ruler
+  ChevronDown, ChevronUp, Printer, Ruler, CheckCircle2
 } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
@@ -20,7 +20,9 @@ export default function CreateContractPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [serverData, setServerData] = useState<any>(null);
-  const [showLegalTerms, setShowLegalTerms] = useState(false); // Chỉ điều khiển hiển thị UI — không ảnh hưởng dữ liệu form
+  const [showLegalTerms, setShowLegalTerms] = useState(false); 
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Form State đầy đủ thông tin chi tiết hợp đồng
   const [formData, setFormData] = useState({
@@ -100,15 +102,21 @@ export default function CreateContractPage() {
       const raw = registrationRes.data;
       setServerData(raw);
 
+      if (raw.hop_dong) {
+        setErrorMessage('Hợp đồng cho phiếu đăng ký này đã tồn tại!');
+      }
+
       // Lấy thông tin phòng/giường ưu tiên từ Đơn đặt cọc (mảng), nếu không có thì lấy từ Lịch hẹn
-      // Dùng optional chaining để tránh lỗi nếu mảng trống
-      const infoSource = (raw.don_dat_coc && raw.don_dat_coc.length > 0) 
-        ? raw.don_dat_coc[0] 
-        : (raw.lich_hen && raw.lich_hen.length > 0 ? raw.lich_hen[0] : {});
+      // Tuy nhiên, ưu tiên CAO NHẤT là phòng đã được Quản lý XẾP (phong_id, giuong_id trong raw.room)
+      const infoSource = (raw.room && raw.room.phong_id) ? raw.room : (
+        (raw.don_dat_coc && raw.don_dat_coc.length > 0) 
+          ? raw.don_dat_coc[0] 
+          : (raw.lich_hen && raw.lich_hen.length > 0 ? raw.lich_hen[0] : {})
+      );
 
       console.log('Nguồn dữ liệu phòng/giường:', infoSource);
 
-      const giaThueGoc = Number(infoSource.phong_gia_thue || raw.muc_gia_mong_muon || 0);
+      const giaThueGoc = Number(infoSource.phong_gia_thue || raw.room?.price?.replace(/\D/g, '') || raw.muc_gia_mong_muon || 0);
       const tienCocGoc = (raw.don_dat_coc && raw.don_dat_coc.length > 0)
         ? Number(raw.don_dat_coc[0].so_tien_coc)
         : giaThueGoc;
@@ -174,19 +182,19 @@ export default function CreateContractPage() {
     e.preventDefault();
     try {
       setSubmitting(true);
+      setErrorMessage('');
       const payload = {
         ...formData,
         trang_thai: 'CHO_DUYET'
       };
-      console.log(payload);
       const res = await axiosInstance.post('/contracts', payload);
       if (res.data) {
-        alert('🎉 Khởi tạo hợp đồng thành công! Đang chờ Quản lý phê duyệt.');
-        router.push('/sale/contract');
+        setIsSuccess(true);
       }
     } catch (error: any) {
-      console.error('Lỗi khi tạo hợp đồng:', error);
-      alert(error.response?.data?.message || 'Có lỗi xảy ra khi lưu hợp đồng.');
+      // Prevent Next.js dev overlay from popping up by logging a string instead of the raw error object
+      console.error('Lỗi khi tạo hợp đồng:', error.message || error);
+      setErrorMessage(error.response?.data?.message || 'Có lỗi xảy ra khi lưu hợp đồng.');
     } finally {
       setSubmitting(false);
     }
@@ -229,6 +237,36 @@ export default function CreateContractPage() {
     );
   }
 
+  if (isSuccess) {
+    return (
+      <div className="bg-[#F7F9F8] min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white p-10 rounded-xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center max-w-lg w-full">
+          <div className="h-20 w-20 bg-green-50 rounded-full flex items-center justify-center mb-5">
+            <CheckCircle2 size={48} className="text-[#00502B]" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Khởi tạo thành công!</h2>
+          <p className="text-slate-500 mb-8 text-[14px] leading-relaxed">
+            Hợp đồng thuê phòng <strong className="text-slate-700">{formData.ma_phong}</strong> đã được khởi tạo và đang chờ Quản lý phê duyệt.
+          </p>
+          <div className="flex gap-3 w-full">
+            <button 
+              onClick={() => router.push('/sale/contract')}
+              className="flex-1 bg-white border border-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm"
+            >
+              Về danh sách
+            </button>
+            <button 
+              onClick={() => router.push(`/sale/registration/${registrationId}`)}
+              className="flex-1 bg-[#00502B] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#003d20] transition-colors shadow-md text-sm"
+            >
+              Xem hồ sơ gốc
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F9F8]">
       <div className="max-w-7xl mx-auto px-5 py-4">
@@ -260,20 +298,28 @@ export default function CreateContractPage() {
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Chờ khởi tạo
+          <div className="flex items-center gap-4">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+              serverData?.hop_dong 
+                ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                : 'bg-amber-50 border-amber-200 text-amber-700'
+            }`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${serverData?.hop_dong ? 'bg-blue-500' : 'bg-amber-500'}`} />
+              {serverData?.hop_dong ? 'Đã khởi tạo' : 'Chờ khởi tạo'}
             </span>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 border border-slate-200 rounded-full bg-white text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              <Printer size={11} /> In nháp
+            <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold transition-colors border border-gray-200">
+              <Printer size={14} />
+              In nháp
             </button>
           </div>
         </div>
+
+        {errorMessage && (
+          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-[13px] font-medium flex items-center gap-2">
+            <AlertTriangle size={16} className="text-rose-500" />
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-3">
 
@@ -282,11 +328,17 @@ export default function CreateContractPage() {
 
             <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
               <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Trạng thái</p>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
-                  <span className="h-1 w-1 rounded-full bg-amber-500" /> Chờ khởi tạo
-                </span>
-              </div>
+                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide flex items-center justify-between">
+              TRẠNG THÁI
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                serverData?.hop_dong 
+                  ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                  : 'bg-amber-50 text-amber-600 border border-amber-200'
+              }`}>
+                <span className={`w-1 h-1 rounded-full ${serverData?.hop_dong ? 'bg-blue-500' : 'bg-amber-500'}`}></span>
+                {serverData?.hop_dong ? 'Đã khởi tạo' : 'Chờ khởi tạo'}
+              </span>
+            </h2>  </div>
               <div className="p-3.5 flex-1 flex flex-col justify-center gap-2 text-xs">
                 <RowKV label="Mã phiếu đăng ký" value={`#${formData.phieu_dang_ky_id || '—'}`} mono />
                 <RowKV label="Ngày lập hồ sơ" value={formatDate(serverData?.created_at)} />
@@ -502,9 +554,9 @@ export default function CreateContractPage() {
               Hủy tác vụ
             </button>
             <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2 bg-[#00502B] text-white font-bold rounded-lg hover:bg-[#003d20] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed transition-all text-[12.5px] shadow-md"
+              onClick={handleSubmit}
+              disabled={submitting || !!serverData?.hop_dong}
+              className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg disabled:opacity-50 active:scale-[0.98] transition-all text-sm flex items-center gap-2"
             >
               {submitting ? 'Đang khởi tạo…' : 'Khởi tạo hợp đồng thuê'}
             </button>

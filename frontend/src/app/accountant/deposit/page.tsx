@@ -1,31 +1,64 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-const initialData = [
-  { id: '#DC-1042', name: 'Nguyễn Văn A', initial: 'NV', room: 'P.302 - Tòa A', amount: '3,500,000 đ', date: '24/10/2023', status: 'pending' },
-  { id: '#DC-1043', name: 'Trần Thị B', initial: 'TT', room: 'P.105 - Tòa B', amount: '4,000,000 đ', date: '24/10/2023', status: 'pending' },
-  { id: '#DC-1044', name: 'Lê Minh C', initial: 'LM', room: 'P.501 - Tòa A', amount: '3,500,000 đ', date: '23/10/2023', status: 'pending' },
-  { id: '#DC-1041', name: 'Phạm Hoàng D', initial: 'PH', room: 'P.202 - Tòa C', amount: '5,000,000 đ', date: '22/10/2023', status: 'approved' },
-];
+import axiosInstance from '@/lib/axios';
 
 export default function AccountantDepositPage() {
   const router = useRouter();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Bộ lọc trạng thái: 'all' (Tất cả), 'pending' (Chưa thu), 'approved' (Đã thu)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved'>('all');
 
-  // Lấy dữ liệu từ localStorage nếu có
+  // Fetch real data from API
   useEffect(() => {
-    const savedData = localStorage.getItem('deposit_requests');
-    if (savedData) {
-      setData(JSON.parse(savedData));
-    } else {
-      localStorage.setItem('deposit_requests', JSON.stringify(initialData));
-    }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosInstance.get('/deposits');
+        const deposits = res.data?.data || [];
+        // Map API response to match table UI structure
+        const mappedData = deposits.map((item: any) => {
+          // get initials
+          const nameParts = (item.nguoi_dat || 'Không tên').trim().split(' ');
+          let initial = '';
+          if (nameParts.length > 0) {
+            initial = nameParts[0][0];
+            if (nameParts.length > 1) {
+              initial += nameParts[nameParts.length - 1][0];
+            }
+          }
+          const amountStr = Number(item.so_tien || 0).toLocaleString('vi-VN') + ' đ';
+          const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('vi-VN') : '';
+          
+          let statusStr = 'pending';
+          if (['DA_THANH_TOAN', 'DA_PHE_DUYET', 'HOAN_THANH'].includes(item.trang_thai_code)) {
+            statusStr = 'approved';
+          } else if (['DA_HUY', 'TU_CHOI', 'HET_HAN'].includes(item.trang_thai_code)) {
+            statusStr = 'cancelled';
+          }
+          
+          return {
+            id: item.ma_don_coc,
+            name: item.nguoi_dat || 'Không tên',
+            initial: initial.toUpperCase(),
+            room: item.phong !== 'Chưa có phòng' ? `${item.phong} - ${item.toa_nha}` : 'Chưa xếp phòng',
+            amount: amountStr,
+            date: dateStr,
+            status: statusStr
+          };
+        });
+        setData(mappedData);
+      } catch (error) {
+        console.error('Lỗi lấy danh sách đặt cọc:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   // Xử lý tìm kiếm và lọc dữ liệu song song
@@ -139,9 +172,13 @@ export default function AccountantDepositPage() {
                         </svg>
                         Tạo phiếu thu
                       </button>
-                    ) : (
+                    ) : item.status === 'approved' ? (
                       <span className="bg-[#e2f0d9] text-[#385723] px-3 py-1.5 rounded-lg text-xs font-bold border border-[#c4dfb4] inline-flex items-center gap-1">
                         ✓ Đã thu
+                      </span>
+                    ) : (
+                      <span className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-100 inline-flex items-center gap-1">
+                        Đã hủy
                       </span>
                     )}
                   </td>

@@ -1,8 +1,9 @@
 const allowedStatuses = [ 
-  'DA_THANH_TOAN', // <-- Thêm cái này
-  'CHO_THANH_TOAN', // <-- Thêm cái này
-  'DA_HUY',         // <-- Thêm cái này
-  'HET_HAN'         // <-- Thêm cái này
+  'DA_THANH_TOAN',
+  'CHO_THANH_TOAN',
+  'DA_PHE_DUYET',
+  'DA_HUY',
+  'HET_HAN'
 ];
 const validateCreateDeposit = (payload) => {
   const errors = [];

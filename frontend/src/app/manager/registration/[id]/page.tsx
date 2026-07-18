@@ -20,6 +20,15 @@ export default function RegistrationDetailPage() {
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Assign Room State
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<any[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [availableBeds, setAvailableBeds] = useState<any[]>([]);
+  const [selectedBedId, setSelectedBedId] = useState<string | null>(null);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [loadingBeds, setLoadingBeds] = useState(false);
+
   useEffect(() => {
     const fetchDetail = async () => {
       try {
@@ -43,17 +52,54 @@ export default function RegistrationDetailPage() {
     setIsConfirmOpen(true);
   };
 
+  const openAssignModal = async () => {
+    setIsAssignModalOpen(true);
+    setLoadingRooms(true);
+    try {
+      // Chỉ lấy những phòng đã chọn trong lịch hẹn
+      setAvailableRooms(data?.selected_rooms || []);
+    } catch (e) {
+      console.error(e);
+      alert('Lỗi tải danh sách phòng trống');
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchBeds = async () => {
+      if (!selectedRoomId) {
+        setAvailableBeds([]);
+        setSelectedBedId(null);
+        return;
+      }
+      setLoadingBeds(true);
+      try {
+        const res = await api.get(`/rooms/${selectedRoomId}/beds/available`);
+        setAvailableBeds(res.data || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingBeds(false);
+      }
+    };
+    fetchBeds();
+  }, [selectedRoomId]);
+
   const executeStatusChange = async () => {
     if (!pendingStatus) return;
     setIsUpdating(true);
 
     try {
       await api.patch(`/contracts/registrations/${encodeURIComponent(id)}/status`, {
-        status: pendingStatus
+        status: pendingStatus,
+        phong_id: selectedRoomId,
+        giuong_id: selectedBedId
       });
       // Update local state to reflect change
       setData((prev: any) => ({ ...prev, status: pendingStatus }));
       setIsConfirmOpen(false);
+      setIsAssignModalOpen(false);
       clearApiCache(); // Xoá cache để danh sách tự fetch lại data mới nhất
     } catch (err) {
       console.error('Failed to update status:', err);
@@ -87,9 +133,6 @@ export default function RegistrationDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-800">Chi tiết phiếu đăng ký</h1>
-            <span className="px-3 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-full">
-              {data.status}
-            </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -114,10 +157,13 @@ export default function RegistrationDetailPage() {
                 TỪ CHỐI
               </button>
               <button 
-                onClick={() => openConfirmModal('Đã duyệt')}
-                className="px-6 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition-colors shadow-sm"
+                onClick={() => {
+                  setPendingStatus('Đã duyệt');
+                  openAssignModal();
+                }}
+                className="px-6 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition-colors shadow-sm flex items-center gap-2"
               >
-                PHÊ DUYỆT
+                XẾP PHÒNG & PHÊ DUYỆT
               </button>
             </>
           )}
@@ -184,7 +230,7 @@ export default function RegistrationDetailPage() {
                 <div className="font-semibold text-gray-900">{data.room.type}</div>
               </div>
               <div className="border-b border-gray-100 pb-2">
-                <div className="text-sm text-gray-500 mb-1">Mức giá dự kiến</div>
+                <div className="text-sm text-gray-500 mb-1">Ngân sách dự kiến</div>
                 <div className="font-bold text-green-600 text-lg">{data.room.price}<span className="text-sm font-medium">/tháng</span></div>
               </div>
               <div className="border-b border-gray-100 pb-2">
@@ -217,7 +263,7 @@ export default function RegistrationDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.attachments.map((file, idx) => (
+              {data.attachments.map((file: any, idx: number) => (
                 <div key={idx} className="flex items-center justify-between border border-gray-200 rounded-lg p-3 hover:border-green-500 transition-colors group cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-600 rounded-md flex items-center justify-center text-white">
@@ -277,6 +323,88 @@ export default function RegistrationDetailPage() {
                     Đang xử lý...
                   </>
                 ) : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Room Modal */}
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">Xếp phòng cho khách</h3>
+              <button onClick={() => setIsAssignModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4 bg-green-50 p-3 rounded-lg border border-green-100">
+                <p className="text-sm font-medium text-green-800">Yêu cầu từ khách: {data.room.type} - {data.room.branch}</p>
+                <p className="text-sm text-green-700 mt-1">Mức giá mong muốn: {data.room.price}</p>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">1. Chọn phòng trong danh sách khách đã xem</label>
+                  {loadingRooms ? (
+                    <div className="text-sm text-gray-500">Đang tải danh sách phòng...</div>
+                  ) : (
+                    <select 
+                      className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white"
+                      value={selectedRoomId || ''}
+                      onChange={(e) => setSelectedRoomId(e.target.value)}
+                    >
+                      <option value="" className="text-gray-500">-- Chọn phòng --</option>
+                      {availableRooms.length === 0 && <option value="" disabled className="text-gray-500">Không có phòng nào được chọn lúc đăng ký</option>}
+                      {availableRooms.map((r: any) => (
+                        <option key={r.id} value={r.id} className="text-gray-900">
+                          Phòng {r.ma_phong} - {r.loai_phong} ({new Intl.NumberFormat('vi-VN').format(r.gia_thue_thang)}đ)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">2. Chọn giường (nếu thuê ghép)</label>
+                  {loadingBeds ? (
+                    <div className="text-sm text-gray-500">Đang tải danh sách giường...</div>
+                  ) : (
+                    <select 
+                      className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500 outline-none disabled:bg-gray-100 text-gray-900 bg-white"
+                      value={selectedBedId || ''}
+                      onChange={(e) => setSelectedBedId(e.target.value)}
+                      disabled={!selectedRoomId}
+                    >
+                      <option value="" className="text-gray-500">-- Không chọn giường (Thuê nguyên phòng) --</option>
+                      {availableBeds.map((b: any) => (
+                        <option key={b.id} value={b.id} className="text-gray-900">
+                          Giường {b.ma_giuong} ({new Intl.NumberFormat('vi-VN').format(b.gia_thue_thang)}đ)
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">* Bỏ trống nếu khách thuê nguyên phòng</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
+              <button 
+                onClick={() => setIsAssignModalOpen(false)}
+                className="px-4 py-2 text-gray-600 font-medium rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={executeStatusChange}
+                disabled={!selectedRoomId || isUpdating}
+                className="px-6 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              >
+                {isUpdating ? 'Đang xử lý...' : 'Xác nhận & Duyệt'}
               </button>
             </div>
           </div>

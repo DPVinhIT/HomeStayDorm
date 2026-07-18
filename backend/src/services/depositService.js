@@ -47,6 +47,8 @@ const normalizeDepositDetail = (row) => {
   };
 
   return {
+    id: row.id,
+    phieu_dang_ky_id: row.phieu_dang_ky_id,
     ma_phieu: row.ma_don_coc,
     ngay_tao: formatDate(row.created_at),
     nguoi_tao: row.nguoi_tao || 'Hệ thống',
@@ -117,7 +119,7 @@ const createDeposit = async (payload, user) => {
       soGiuongThue: payload.so_giuong_thue || null,
       soTienCoc: Number(payload.so_tien_coc),
       hanThanhToan: payload.han_thanh_toan || null,
-      status: 'CHO_XU_LY',
+      status: 'CHO_THANH_TOAN', // Đẩy thẳng sang Kế toán
       createdBy,
     });
 
@@ -157,6 +159,22 @@ const updateDepositStatus = async (id, payload, user) => {
       status: payload.status, 
       confirmedBy,
     });
+
+    if (payload.status === 'DA_THANH_TOAN' || payload.status === 'Đã thanh toán' || payload.status === 'DA_PHE_DUYET') {
+      if (updatedRow.giuong_id) {
+        await client.query("UPDATE giuong SET trang_thai = 'DA_THUE' WHERE id = $1", [updatedRow.giuong_id]);
+      } else if (updatedRow.phong_id) {
+        await client.query("UPDATE phong SET trang_thai = 'DA_THUE' WHERE id = $1", [updatedRow.phong_id]);
+        await client.query("UPDATE giuong SET trang_thai = 'DA_THUE' WHERE phong_id = $1", [updatedRow.phong_id]);
+      }
+    } else if (payload.status === 'DA_HUY' || payload.status === 'TU_CHOI' || payload.status === 'Đã hủy' || payload.status === 'Từ chối') {
+      if (updatedRow.giuong_id) {
+        await client.query("UPDATE giuong SET trang_thai = 'TRONG' WHERE id = $1", [updatedRow.giuong_id]);
+      } else if (updatedRow.phong_id) {
+        await client.query("UPDATE phong SET trang_thai = 'TRONG' WHERE id = $1", [updatedRow.phong_id]);
+        await client.query("UPDATE giuong SET trang_thai = 'TRONG' WHERE phong_id = $1", [updatedRow.phong_id]);
+      }
+    }
 
     await client.query('COMMIT');
     return { ...updatedRow }; // Trả về thông tin cơ bản sau khi update

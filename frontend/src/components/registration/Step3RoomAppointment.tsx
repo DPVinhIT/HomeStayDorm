@@ -32,8 +32,14 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
     setFilters(prev => ({ ...prev, gioi_tinh: gender }));
   }, [customerData?.gioi_tinh]);
 
+  // Sync branch filter from registration info
+  useEffect(() => {
+    if (registrationData?.chi_nhanh_id) {
+      setFilters(prev => ({ ...prev, chi_nhanh_id: registrationData.chi_nhanh_id }));
+    }
+  }, [registrationData?.chi_nhanh_id]);
+
   const [appointmentDate, setAppointmentDate] = useState('');
-  const [appointmentNote, setAppointmentNote] = useState('');
 
   const fetchAvailableRooms = async () => {
     try {
@@ -59,21 +65,21 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
       newData.splice(existingIndex, 1);
       updateData(newData);
     } else {
-      updateData([...data, { phong_id: room.id, thoi_gian_hen: appointmentDate, ghi_chu: appointmentNote, ma_phong: room.ma_phong, loai_phong: room.loai_phong, gia: room.gia_thue_thang }]);
+      updateData([...data, { phong_id: room.id, thoi_gian_hen: appointmentDate, ghi_chu: '', ma_phong: room.ma_phong, loai_phong: room.loai_phong, gia: room.gia_thue_thang }]);
     }
   };
 
-  // Sync date/note to appointments
+  // Sync date to appointments
   useEffect(() => {
     if (data.length > 0 && appointmentDate) {
       const updatedData = data.map(app => ({
         ...app,
         thoi_gian_hen: appointmentDate,
-        ghi_chu: appointmentNote
+        ghi_chu: ''
       }));
       updateData(updatedData);
     }
-  }, [appointmentDate, appointmentNote]);
+  }, [appointmentDate]);
 
   const selectedRoomIds = data.map(app => app.phong_id);
 
@@ -158,8 +164,8 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
             <label className="block text-sm font-bold text-gray-800 mb-2">Ghi chú thêm <span className="text-red-500">*</span></label>
             <textarea 
               rows={4}
-              value={appointmentNote}
-              onChange={(e) => setAppointmentNote(e.target.value)}
+              value={registrationData.ghi_chu || ''}
+              onChange={(e) => updateRegistration({ ...registrationData, ghi_chu: e.target.value })}
               className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 font-medium placeholder:text-gray-400 placeholder:font-normal shadow-sm focus:outline-none focus:border-[#00502B] focus:ring-4 focus:ring-[#00502B]/10 transition-all" 
               placeholder="Nhập các yêu cầu đặc biệt hoặc lưu ý cho việc xếp phòng..."
               required
@@ -180,7 +186,7 @@ export default function Step3RoomAppointment({ data, updateData, onSubmit, onBac
               data.length === 0 || 
               !registrationData.ngay_du_kien_vao_o || 
               !appointmentDate || 
-              !appointmentNote
+              !registrationData.ghi_chu
             }
             className="bg-[#00502B] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#003d20] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >

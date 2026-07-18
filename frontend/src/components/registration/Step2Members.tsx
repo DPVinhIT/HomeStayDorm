@@ -6,6 +6,7 @@ interface Props {
   updateData: (data: any[]) => void;
   onNext: () => void;
   onBack: () => void;
+  so_luong_nguoi?: number;
 }
 
 const InputField = ({ label, name, value, type = "text", placeholder, index, onChange }: any) => (
@@ -37,8 +38,9 @@ const SelectField = ({ label, name, value, options, index, onChange }: any) => (
   </div>
 );
 
-export default function Step2Members({ data, updateData, onNext, onBack }: Props) {
+export default function Step2Members({ data, updateData, onNext, onBack, so_luong_nguoi = 1 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const expectedCount = Math.max(0, so_luong_nguoi - 1);
 
   const handleAddMember = () => {
     updateData([...data, { ho_ten: '', gioi_tinh: 'Nam', ngay_sinh: '', cccd: '', so_dien_thoai: '', quan_he: '' }]);
@@ -81,7 +83,8 @@ export default function Step2Members({ data, updateData, onNext, onBack }: Props
   };
 
   // Validate all members have all fields filled. If no members, it's valid (length 0 returns true for every).
-  const isFormValid = data.every(member => 
+  // Also validate that the number of members matches the expected count (so_luong_nguoi - 1)
+  const isFormValid = data.length === expectedCount && data.every(member => 
     member.ho_ten && member.gioi_tinh && member.ngay_sinh && member.cccd && member.so_dien_thoai && member.quan_he
   );
 
@@ -90,7 +93,13 @@ export default function Step2Members({ data, updateData, onNext, onBack }: Props
       
       <div>
         <h2 className="text-xl font-bold text-[#00502B]">Thêm người ở ghép</h2>
-        <p className="text-gray-500 text-sm mt-1">Nhập thông tin cho những người sẽ chia sẻ phòng này. Bạn có thể bỏ qua bước này nếu đăng ký phòng đơn.</p>
+        {expectedCount > 0 ? (
+          <p className="text-amber-600 text-sm mt-1 font-medium bg-amber-50 p-2.5 rounded-lg border border-amber-100 inline-block">
+            Vui lòng thêm đúng <span className="font-bold">{expectedCount}</span> thành viên ở cùng (theo số lượng {so_luong_nguoi} người đã chọn ở Bước 1).
+          </p>
+        ) : (
+          <p className="text-gray-500 text-sm mt-1">Hồ sơ đăng ký 1 người ở, không cần thêm thành viên ở cùng.</p>
+        )}
       </div>
 
       <div className="space-y-6">

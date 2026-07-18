@@ -155,11 +155,15 @@ exports.getRegistrationById = async (req, res) => {
       SELECT 
         p.ma_phieu, p.trang_thai, p.loai_phong_mong_muon, p.muc_gia_mong_muon, 
         p.ngay_du_kien_vao_o, p.thoi_han_thue_thang, p.ghi_chu, p.so_luong_nguoi,
+        p.phong_id, p.giuong_id,
         k.ho_ten, k.so_dien_thoai, k.email, k.cccd, k.nghe_nghiep,
-        c.ten_chi_nhanh
+        c.ten_chi_nhanh, c.id as chi_nhanh_id,
+        ph.ma_phong, g.ma_giuong
       FROM phieu_dang_ky_thue p
       JOIN khach_hang k ON p.khach_hang_id = k.id
       LEFT JOIN chi_nhanh c ON p.chi_nhanh_id = c.id
+      LEFT JOIN phong ph ON p.phong_id = ph.id
+      LEFT JOIN giuong g ON p.giuong_id = g.id
       WHERE p.ma_phieu = $1
     `;
     const { rows } = await db.query(query, [id]);
@@ -168,7 +172,22 @@ exports.getRegistrationById = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy phiếu đăng ký' });
     }
 
+    // Lấy thông tin các phòng đã chọn (lịch hẹn)
+    const appointmentsQuery = `
+      SELECT ph.id, ph.ma_phong, ph.loai_phong, ph.gia_thue_thang, cn.ten_chi_nhanh, cn.id as chi_nhanh_id
+      FROM lich_hen lh
+      JOIN phong ph ON lh.phong_id = ph.id
+      LEFT JOIN chi_nhanh cn ON ph.chi_nhanh_id = cn.id
+      JOIN phieu_dang_ky_thue p ON lh.phieu_dang_ky_id = p.id
+      WHERE p.ma_phieu = $1
+    `;
+    const appointmentsResult = await db.query(appointmentsQuery, [id]);
     const row = rows[0];
+    const selectedRooms = appointmentsResult.rows;
+    
+    // Fallback thông tin phòng từ danh sách phòng đã xem nếu phiếu đăng ký chưa cập nhật
+    const fallbackRoom = selectedRooms.length > 0 ? selectedRooms[0] : null;
+
     const formattedData = {
       id: row.ma_phieu,
       status: formatStatus(row.trang_thai),
@@ -180,15 +199,30 @@ exports.getRegistrationById = async (req, res) => {
         job: row.nghe_nghiep || 'Chưa cập nhật'
       },
       room: {
-        branch: row.ten_chi_nhanh || 'Chưa phân bổ',
-        type: row.loai_phong_mong_muon || 'Chưa cập nhật',
-        price: row.muc_gia_mong_muon ? `${parseInt(row.muc_gia_mong_muon).toLocaleString('vi-VN')} VNĐ` : 'Chưa cập nhật',
+        branch: row.ten_chi_nhanh || (fallbackRoom ? fallbackRoom.ten_chi_nhanh : 'Chưa phân bổ'),
+        chi_nhanh_id: row.chi_nhanh_id || (fallbackRoom ? fallbackRoom.chi_nhanh_id : null),
+        type: row.loai_phong_mong_muon || (fallbackRoom ? fallbackRoom.loai_phong : 'Chưa cập nhật'),
+        price: row.muc_gia_mong_muon ? `${parseInt(row.muc_gia_mong_muon).toLocaleString('vi-VN')} VNĐ` : (fallbackRoom ? `${parseInt(fallbackRoom.gia_thue_thang).toLocaleString('vi-VN')} VNĐ` : 'Chưa cập nhật'),
         moveInDate: row.ngay_du_kien_vao_o ? new Date(row.ngay_du_kien_vao_o).toLocaleDateString('vi-VN') : 'Chưa cập nhật',
         duration: row.thoi_han_thue_thang ? `${row.thoi_han_thue_thang} tháng` : 'Chưa cập nhật',
-        note: row.ghi_chu || 'Không có ghi chú'
+        note: row.ghi_chu || 'Không có ghi chú',
+        phong_id: row.phong_id,
+        giuong_id: row.giuong_id,
+        ma_phong: row.ma_phong,
+        ma_giuong: row.ma_giuong
       },
-      attachments: [] // Dữ liệu tệp đính kèm sẽ được lấy từ bảng đính kèm nếu có (tạm thời để mảng rỗng)
+      attachments: [], // Dữ liệu tệp đính kèm sẽ được lấy từ bảng đính kèm nếu có (tạm thời để mảng rỗng)
+      selected_rooms: selectedRooms // Các phòng Sale đã chọn
     };
+
+    // Lấy thông tin phiếu đặt cọc tương ứng nếu có
+    const depositQuery = `SELECT * FROM don_dat_coc WHERE phieu_dang_ky_id = (SELECT id FROM phieu_dang_ky_thue WHERE ma_phieu = $1 LIMIT 1)`;
+    const depositResult = await db.query(depositQuery, [id]);
+    if (depositResult.rows.length > 0) {
+      formattedData.don_dat_coc = depositResult.rows[0];
+    } else {
+      formattedData.don_dat_coc = null;
+    }
 
     res.status(200).json({
       status: 'success',
@@ -203,7 +237,7 @@ exports.getRegistrationById = async (req, res) => {
 exports.updateRegistrationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, phong_id, giuong_id } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Vui lòng cung cấp trạng thái mới' });
@@ -211,20 +245,24 @@ exports.updateRegistrationStatus = async (req, res) => {
 
     const query = `
       UPDATE phieu_dang_ky_thue
-      SET trang_thai = $1
+      SET trang_thai = $1, phong_id = COALESCE($3, phong_id), giuong_id = COALESCE($4, giuong_id)
       WHERE ma_phieu = $2
-      RETURNING ma_phieu, trang_thai
+      RETURNING id, ma_phieu, trang_thai, phong_id, giuong_id
     `;
-    const { rows } = await db.query(query, [status, id]);
+    const { rows } = await db.query(query, [status, id, phong_id || null, giuong_id || null]);
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Không tìm thấy phiếu đăng ký' });
     }
 
+    const updatedReg = rows[0];
+
+    // [ĐÃ BỎ] Không cập nhật tự động Phiếu Đặt Cọc (don_dat_coc) nữa vì chưa được tạo. Sale sẽ tạo thủ công.
+    
     res.status(200).json({
       status: 'success',
       message: 'Cập nhật trạng thái thành công',
-      data: rows[0]
+      data: updatedReg
     });
   } catch (error) {
     console.error('Lỗi cập nhật trạng thái phiếu đăng ký:', error);
@@ -266,6 +304,49 @@ exports.getAllContracts = async (req, res) => {
   }
 };
 
+exports.getContractById = async (req, res) => {
+  try {
+    const { id } = req.params; // id = ma_hop_dong
+    const query = `
+      SELECT 
+        h.*,
+        p.ma_phieu AS ma_phieu_dang_ky,
+        p.id AS phieu_dang_ky_id_num,
+        k.ho_ten AS khach_hang_ten,
+        k.so_dien_thoai AS khach_hang_sdt,
+        k.email AS khach_hang_email,
+        k.cccd AS khach_hang_cccd,
+        k.dia_chi AS khach_hang_dia_chi,
+        nv1.ho_ten AS nguoi_tao_ten,
+        nv2.ho_ten AS nguoi_phe_duyet_ten,
+        ph.ma_phong,
+        ph.loai_phong,
+        ph.gia_thue_thang AS phong_gia_thue,
+        ph.tang AS phong_tang,
+        cn.ten_chi_nhanh,
+        g.ma_giuong,
+        g.gia_thue_thang AS giuong_gia_thue
+      FROM hop_dong_thue h
+      JOIN phieu_dang_ky_thue p ON h.phieu_dang_ky_id = p.id
+      JOIN khach_hang k ON p.khach_hang_id = k.id
+      LEFT JOIN nhan_vien nv1 ON h.created_by = nv1.id
+      LEFT JOIN nhan_vien nv2 ON h.approved_by = nv2.id
+      LEFT JOIN giuong g ON h.giuong_id = g.id
+      LEFT JOIN phong ph ON g.phong_id = ph.id
+      LEFT JOIN chi_nhanh cn ON ph.chi_nhanh_id = cn.id
+      WHERE h.ma_hop_dong = $1
+    `;
+    const result = await db.pool.query(query, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hợp đồng.' });
+    }
+    return res.status(200).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Lỗi khi lấy chi tiết hợp đồng:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi hệ thống máy chủ.' });
+  }
+};
+
 exports.createContract = async (req, res) => {
   const { 
       phieu_dang_ky_id, 
@@ -276,7 +357,7 @@ exports.createContract = async (req, res) => {
       gia_thue_thang, 
       tien_coc, 
       ky_thanh_toan,
-      mau_hop_dong_id 
+      mau_hop_dong_id
   } = req.body;
 
 
@@ -287,12 +368,16 @@ exports.createContract = async (req, res) => {
 
   const client = await db.pool.connect();
   try {
-    const created_by = req.user.id; 
+    const account_id = req.user.id; 
 
-    if (!created_by) {
+    if (!account_id) {
       return res.status(401).json({ message: "Không xác định được người tạo hợp đồng." });
     }
     await client.query('BEGIN');
+
+    // Get nhan_vien id from tai_khoan id
+    const nvRes = await client.query('SELECT id FROM nhan_vien WHERE tai_khoan_id = $1', [account_id]);
+    const created_by = nvRes.rows.length > 0 ? nvRes.rows[0].id : null;
 
     // 2. Kiểm tra phiếu đăng ký (tên bảng là phieu_dang_ky_thue)
     const resReg = await client.query(
@@ -310,6 +395,27 @@ exports.createContract = async (req, res) => {
     if (registration.trang_thai !== 'Đã duyệt') {
       await client.query('ROLLBACK');
       return res.status(400).json({ success: false, message: 'Phiếu đăng ký chưa được duyệt!' });
+    }
+
+    // 2.5 Kiểm tra xem phiếu đăng ký đã có hợp đồng chưa
+    const existingContract = await client.query(
+      'SELECT id FROM hop_dong_thue WHERE phieu_dang_ky_id = $1',
+      [phieu_dang_ky_id]
+    );
+
+    if (existingContract.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'Hợp đồng cho phiếu đăng ký này đã tồn tại!' });
+    }
+
+    // 2.6 Kiểm tra Phiếu đặt cọc đã được phê duyệt chưa
+    const existingDeposit = await client.query('SELECT trang_thai FROM don_dat_coc WHERE phieu_dang_ky_id = $1', [phieu_dang_ky_id]);
+    if (existingDeposit.rows.length > 0) {
+      const depositStatus = existingDeposit.rows[0].trang_thai;
+      if (depositStatus !== 'DA_PHE_DUYET' && depositStatus !== 'Đã phê duyệt') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ success: false, message: 'Không thể lập hợp đồng vì Tiền cọc chưa được quản lý phê duyệt!' });
+      }
     }
 
     // 3. Tạo mã hợp đồng
@@ -330,7 +436,7 @@ exports.createContract = async (req, res) => {
         trang_thai, 
         created_by,
         mau_hop_dong_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Chờ thanh toán', $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Chờ ký', $10, $11)
     `;
 
     // Mảng giá trị truyền vào (phải đúng thứ tự với danh sách cột ở trên)
@@ -347,6 +453,7 @@ exports.createContract = async (req, res) => {
       created_by,             // $10 (ID nhân viên từ req.user.id)
       mau_hop_dong_id || null // $11
     ]);
+
     await client.query('COMMIT');
     return res.status(201).json({
       success: true,
@@ -357,7 +464,7 @@ exports.createContract = async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Lỗi Transaction:', error);
-    return res.status(500).json({ success: false, message: 'Lỗi hệ thống máy chủ.' });
+    return res.status(500).json({ success: false, message: 'Lỗi hệ thống máy chủ: ' + error.message });
   } finally {
     client.release();
   }

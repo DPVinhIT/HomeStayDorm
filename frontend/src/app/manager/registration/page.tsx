@@ -105,6 +105,9 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+// Safelist colors that are returned by the backend so Tailwind doesn't purge them
+const AVATAR_COLORS = "bg-green-100 text-green-700 bg-blue-100 text-blue-700 bg-red-100 text-red-700 bg-yellow-100 text-yellow-700 bg-purple-100 text-purple-700 bg-gray-200 text-gray-700";
+
 export default function RegistrationPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);

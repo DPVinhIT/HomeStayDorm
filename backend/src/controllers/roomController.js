@@ -48,3 +48,20 @@ exports.getAvailableRooms = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi tìm phòng trống' });
   }
 };
+
+exports.getAvailableBeds = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      SELECT id, ma_giuong, gia_thue_thang 
+      FROM giuong 
+      WHERE phong_id = $1 AND trang_thai = 'TRONG'
+      ORDER BY ma_giuong ASC
+    `;
+    const { rows } = await db.query(query, [id]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching available beds:', error);
+    res.status(500).json({ message: 'Lỗi server khi tìm giường trống' });
+  }
+};

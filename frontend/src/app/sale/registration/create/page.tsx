@@ -27,6 +27,7 @@ export default function CreateRegistrationPage() {
       nghe_nghiep: ''
     },
     registration: {
+      chi_nhanh_id: '',
       hinh_thuc_thue: 'Theo giường',
       so_luong_nguoi: 1,
       gioi_tinh_nhom: 'Nam',
@@ -62,9 +63,9 @@ export default function CreateRegistrationPage() {
       setLoading(true);
       await axiosInstance.post('/registration', formData);
       setIsSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submit error:', error);
-      alert('Có lỗi xảy ra khi tạo phiếu đăng ký.');
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi tạo phiếu đăng ký.');
     } finally {
       setLoading(false);
     }
@@ -142,6 +143,7 @@ export default function CreateRegistrationPage() {
           {currentStep === 2 && (
             <Step2Members 
               data={formData.members} 
+              so_luong_nguoi={formData.registration.so_luong_nguoi}
               updateData={(data: any) => updateFormData('members', data)} 
               onNext={handleNext} 
               onBack={handleBack} 

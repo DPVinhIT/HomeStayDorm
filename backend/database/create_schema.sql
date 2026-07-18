@@ -157,6 +157,10 @@ CREATE TABLE phieu_dang_ky_thue (
 
     chi_nhanh_id BIGINT REFERENCES chi_nhanh(id),
 
+    phong_id BIGINT REFERENCES phong(id),
+
+    giuong_id BIGINT REFERENCES giuong(id),
+
     hinh_thuc_thue VARCHAR(50),
 
     so_luong_nguoi INTEGER,
@@ -279,7 +283,7 @@ CREATE TABLE don_dat_coc (
 
     han_thanh_toan TIMESTAMP,
 
-    trang_thai VARCHAR(50) CHECK (trang_thai IN ( 'DA_THANH_TOAN', 'CHO_THANH_TOAN', 'DA_HUY', 'HET_HAN' )),
+    trang_thai VARCHAR(50) CHECK (trang_thai IN ( 'KHOI_TAO', 'CHO_XU_LY', 'CHO_THANH_TOAN', 'DA_THANH_TOAN', 'DA_PHE_DUYET', 'DA_HUY', 'HET_HAN' )),
 
     created_by BIGINT REFERENCES nhan_vien(id),
 

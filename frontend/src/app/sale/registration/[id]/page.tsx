@@ -4,8 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Calendar, User, Users, FileText, 
   CreditCard, Home, Mail, Phone, MapPin, 
-  Briefcase, Compass, DollarSign, Clock, Info,
-  CalendarPlus, Pencil
+  Briefcase, Compass, DollarSign, Clock, Info, CheckCircle2
 } from 'lucide-react';
 import axiosInstance from '@/lib/axios';
 
@@ -14,6 +13,46 @@ export default function RegistrationDetailPage() {
   const { id } = useParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isCreatingDeposit, setIsCreatingDeposit] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const onCreateDeposit = async () => {
+    try {
+      if (!data?.phong_id) {
+        alert("Lỗi: Quản lý chưa xếp phòng chính thức.");
+        return;
+      }
+      setIsCreatingDeposit(true);
+      
+      let price = data.phong_duoc_gan_gia || data.giuong_duoc_gan_gia || data.muc_gia_mong_muon || 0;
+      let rawPrice = price ? parseFloat(String(price)) : 0;
+      if (isNaN(rawPrice) || rawPrice <= 0) {
+        alert("Lỗi: Không thể xác định giá thuê để tính tiền cọc (giá = 0). Vui lòng cập nhật giá phòng hoặc ngân sách.");
+        setIsCreatingDeposit(false);
+        return;
+      }
+      
+      const soTienCoc = rawPrice * 2;
+
+      const payload = {
+        phieu_dang_ky_id: data.id,
+        phong_id: data.phong_id,
+        giuong_id: data.giuong_id || null,
+        so_tien_coc: soTienCoc,
+        han_thanh_toan: new Date(Date.now() + 86400000).toISOString() // + 1 day
+      };
+
+      await axiosInstance.post('/deposits', payload);
+      setShowSuccessModal(true);
+      fetchDetail();
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.message || err.message || JSON.stringify(err);
+      alert(`Lỗi tạo đơn đặt cọc: ${msg}`);
+    } finally {
+      setIsCreatingDeposit(false);
+    }
+  };
 
   const fetchDetail = async () => {
     try {
@@ -33,17 +72,55 @@ export default function RegistrationDetailPage() {
     if (id) fetchDetail();
   }, [id]);
 
+  const formatStatus = (status: string) => {
+    if (!status) return 'N/A';
+    if (status === 'Đã duyệt') return 'Đã duyệt';
+    const statusMap: Record<string, string> = {
+      'KHOI_TAO': 'Khởi tạo',
+      'CHO_XAC_NHAN': 'Chờ xác nhận',
+      'DA_XAC_NHAN': 'Đã xác nhận',
+      'CHO_THANH_TOAN': 'Chờ thanh toán',
+      'DA_THANH_TOAN': 'Đã thanh toán',
+      'CHO_PHE_DUYET': 'Chờ phê duyệt',
+      'DA_PHE_DUYET': 'Đã duyệt',
+      'TU_CHOI': 'Từ chối',
+      'DA_HUY': 'Đã hủy',
+      'HOAN_THANH': 'Hoàn thành',
+      'DANG_THUC_HIEN': 'Đang thực hiện',
+      'CHO_XU_LY': 'Mới',
+      'DANG_XU_LY': 'Đang xử lý',
+      'DA_CHUYEN_DOI': 'Đã chuyển đổi',
+      'CHO_DUYET': 'Chờ duyệt',
+      'DA_DAT_COC': 'Đã đặt cọc',
+      'HET_HAN': 'Hết hạn',
+    };
+    return statusMap[status] || status;
+  };
+
   const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'CHO_XU_LY':
-        return <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Mới</span>;
-      case 'DANG_XU_LY':
-        return <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">Đang xử lý</span>;
-      case 'DA_CHUYEN_DOI':
-        return <span className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">Đã chuyển đổi</span>;
-      default:
-        return <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">{status}</span>;
+    const formatted = formatStatus(status);
+    let bg = 'bg-gray-100';
+    let text = 'text-gray-600';
+    const textLower = formatted.toLowerCase();
+
+    if (textLower === 'mới' || textLower.includes('đã duyệt') || textLower.includes('hoàn thành') || textLower.includes('đã đặt cọc') || textLower.includes('đã thanh toán') || textLower.includes('đã xác nhận')) {
+      bg = 'bg-green-100';
+      text = 'text-green-700';
+    } else if (textLower.includes('chờ') || textLower.includes('đang xử lý') || textLower.includes('khởi tạo')) {
+      bg = 'bg-amber-100';
+      text = 'text-amber-700';
+    } else if (textLower.includes('hủy') || textLower.includes('từ chối')) {
+      bg = 'bg-red-100';
+      text = 'text-red-700';
+    } else if (textLower.includes('đã chuyển đổi') || textLower.includes('đang thực hiện')) {
+      bg = 'bg-blue-100';
+      text = 'text-blue-700';
+    } else {
+      bg = 'bg-gray-200';
+      text = 'text-gray-700';
     }
+
+    return <span className={`px-3 py-1 ${bg} ${text} text-xs font-semibold rounded-full whitespace-nowrap`}>{formatted}</span>;
   };
 
   const formatCurrency = (amount: any) => {
@@ -192,7 +269,7 @@ return (
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <Calendar size={18} className="text-[#00502B]" /> Lịch xem phòng ({data.lich_hen?.length || 0})
               </h2>
-              {hasNoAppointment && (
+              {/* {hasNoAppointment && (
                 <button
                   onClick={() => router.push(`/sale/appointment/create?registration_id=${data.id}`)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00502B]/10 text-[#00502B] text-xs font-semibold rounded-lg hover:bg-[#00502B]/20 transition-colors"
@@ -200,27 +277,30 @@ return (
                   <CalendarPlus size={14} />
                   Hẹn lịch xem phòng
                 </button>
-              )}
+              )} */}
             </div>
             {hasNoAppointment ? (
               <p className="text-gray-400 text-sm italic">Chưa lên lịch hẹn xem phòng.</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {data.lich_hen.map((a: any) => (
+                {data.lich_hen.map((a: any) => {
+                  const isCompleted = (data.don_dat_coc && data.don_dat_coc.length > 0) || data.hop_dong;
+                  return (
                   <div key={a.id} className="p-3.5 border border-gray-100 rounded-lg bg-gray-50/50 hover:border-gray-200 transition-all text-sm">
                     <div className="flex justify-between items-start mb-1.5">
                       <span className="font-bold text-[#00502B]">Phòng: {a.ma_phong || 'Chưa xếp'}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${
+                        isCompleted ? 'bg-green-100 text-green-700' :
                         a.trang_thai === 'CHO_XAC_NHAN' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
-                      }`}>{a.trang_thai}</span>
+                      }`}>{isCompleted ? 'Thành công' : formatStatus(a.trang_thai)}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
                       <Clock size={12} />
                       <span>{new Date(a.thoi_gian_hen).toLocaleString('vi-VN')}</span>
                     </div>
-                    <p className="text-xs text-gray-400">Loại: {a.loai_phong || 'N/A'} - {formatCurrency(a.phong_gia_thue)}/tháng</p>
+                    <p className="text-xs text-gray-400">Loại: {a.loai_phong || data.loai_phong_mong_muon || 'N/A'} - {formatCurrency(a.phong_gia_thue)}/tháng</p>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
@@ -239,7 +319,7 @@ return (
                   <div className="p-3 bg-green-50/60 border border-green-100 rounded-lg text-sm">
                     <div className="flex justify-between font-medium text-green-900">
                       <span>Mã cọc: #{data.don_dat_coc[0].ma_don_coc}</span>
-                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{data.don_dat_coc[0].trang_thai}</span>
+                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{formatStatus(data.don_dat_coc[0].trang_thai)}</span>
                     </div>
                     <p className="text-lg font-bold text-[#00502B] mt-1">{formatCurrency(data.don_dat_coc[0].so_tien_coc)}</p>
                     <p className="text-[11px] text-gray-400 mt-1">Ngày lập: {formatDate(data.don_dat_coc[0].created_at)}</p>
@@ -258,7 +338,7 @@ return (
                   <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg text-sm">
                     <div className="flex justify-between font-medium text-blue-900">
                       <span>Mã HĐ: #{data.hop_dong.ma_hop_dong}</span>
-                      <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{data.hop_dong.trang_thai}</span>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{formatStatus(data.hop_dong.trang_thai)}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-600">
                       <div>
@@ -287,39 +367,64 @@ return (
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* THANH HÀNH ĐỘNG CỐ ĐỊNH Ở DƯỚI CÙNG (STICKY ACTION BAR) */}
-      {/* Luôn hiển thị để có nút Chỉnh sửa; nút Lập hợp đồng chỉ hiện khi đã duyệt */}
-      <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="hidden md:block">
-            <p className="text-xs text-gray-400">Trạng thái hồ sơ hiện tại</p>
-            <p className="text-sm font-bold text-gray-700 flex items-center gap-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full ${isApproved ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-              {isApproved ? 'Sẵn sàng chuyển đổi hợp đồng' : data.trang_thai}
-            </p>
-          </div>
-          
-          {/* Cụm nút bấm hành động */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <button
-              onClick={() => router.push(`/sale/registration/edit?id=${data.id}`)}
-              className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 shadow-sm hover:shadow-md active:scale-[0.98] transition-all text-sm flex items-center gap-2 justify-center"
-            >
-              <Pencil size={16} />
-              Chỉnh sửa
-            </button>
-            {isApproved && (
+      {data.trang_thai === 'Đã duyệt' && (
+        // Thêm md:left-20 lg:left-64 để đẩy thanh này lùi vào, nhường chỗ cho Sidebar bên trái
+        <div className="fixed bottom-0 left-0 md:left-25 lg:left-65 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 py-4 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40 transition-all">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="hidden md:block">
+              <p className="text-xs text-gray-400">Trạng thái hồ sơ hiện tại</p>
+              <p className="text-sm font-bold text-gray-700 flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Sẵn sàng chuyển đổi hợp đồng
+              </p>
+            </div>
+            
+            {/* Cụm nút bấm hành động */}
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
               <button
                 onClick={() => router.push(`/sale/contract/create?registration_id=${data.id}`)}
-                className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 justify-center"
+                className="px-6 py-2.5 bg-[#00502B] text-white font-bold rounded-xl hover:bg-[#003d20] shadow-md hover:shadow-lg active:scale-[0.98] transition-all text-sm flex items-center gap-2 w-full md:w-auto justify-center"
               >
                 <FileText size={16} />
                 Lập hợp đồng thuê
               </button>
-            )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ───────────────────────────────────────────────────────────────── */}
+
+      {/* POP-UP SUCCESS MODAL */}
+    {showSuccessModal && (
+      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+        <div className="bg-white p-10 rounded-xl shadow-xl border border-slate-100 flex flex-col items-center justify-center text-center max-w-lg w-full animate-in fade-in zoom-in duration-300">
+          <div className="h-20 w-20 bg-green-50 rounded-full flex items-center justify-center mb-5">
+            <CheckCircle2 size={48} className="text-[#00502B]" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Tạo đơn đặt cọc thành công!</h2>
+          <p className="text-slate-500 mb-8 text-[14px] leading-relaxed">
+            Yêu cầu tạo đơn đặt cọc cho phiếu đăng ký <strong className="text-slate-700">#{data?.ma_phieu}</strong> đã được gửi đến Kế toán.
+          </p>
+          <div className="flex gap-3 w-full">
+            <button 
+              onClick={() => {
+                setShowSuccessModal(false);
+                router.push('/sale/deposit');
+              }}
+              className="flex-1 bg-white border border-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm"
+            >
+              Chuyển đến Phiếu đặt cọc
+            </button>
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="flex-1 bg-[#00502B] text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#003d20] transition-colors shadow-md text-sm"
+            >
+              Đóng
+            </button>
           </div>
         </div>
       </div>
-      {/* ───────────────────────────────────────────────────────────────── */}
+    )}
 
     </div>
   );

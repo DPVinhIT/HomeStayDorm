@@ -24,11 +24,42 @@ exports.getAllRegistrations = async (req, res) => {
 };
 
 exports.createRegistration = async (req, res) => {
-  const client = await db.pool.connect();
-  try {
-    await client.query('BEGIN'); // Bắt đầu transaction
-
     const { customer, registration, members, appointments } = req.body;
+
+    // 0. Verification - Kiểm tra dữ liệu đầu vào
+    if (customer) {
+      if (!customer.ho_ten || customer.ho_ten.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập họ và tên khách hàng.' });
+      }
+      if (!customer.so_dien_thoai || customer.so_dien_thoai.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập số điện thoại khách hàng.' });
+      }
+      if (customer.so_dien_thoai && !/^(0|\+84)[3|5|7|8|9][0-9]{8}$/.test(customer.so_dien_thoai)) {
+        return res.status(400).json({ message: 'Số điện thoại không hợp lệ (Phải đúng định dạng SĐT Việt Nam, VD: 0912345678).' });
+      }
+      if (!customer.cccd || customer.cccd.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập CCCD/CMND khách hàng.' });
+      }
+      if (!/^[0-9]{9,12}$/.test(customer.cccd)) {
+        return res.status(400).json({ message: 'CCCD/CMND không hợp lệ (Phải chứa 9 hoặc 12 chữ số).' });
+      }
+      if (!customer.email || customer.email.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập địa chỉ Email khách hàng.' });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+        return res.status(400).json({ message: 'Địa chỉ Email không hợp lệ.' });
+      }
+      if (!customer.dia_chi || customer.dia_chi.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng nhập địa chỉ thường trú khách hàng.' });
+      }
+      if (!customer.ngay_sinh || customer.ngay_sinh.trim() === '') {
+        return res.status(400).json({ message: 'Vui lòng chọn ngày sinh khách hàng.' });
+      }
+    }
+
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN'); // Bắt đầu transaction
     
     // Lấy nhan_vien_id thực sự từ bảng nhan_vien dựa vào tai_khoan_id
     const { rows: nvRows } = await client.query('SELECT id FROM nhan_vien WHERE tai_khoan_id = $1', [req.user.id]);
@@ -36,33 +67,43 @@ exports.createRegistration = async (req, res) => {
 
     let khachHangId = customer.id;
 
-    // 1. Tạo mới Khách hàng nếu chưa có ID
+    // 1. Tạo mới hoặc cập nhật Khách hàng nếu chưa có ID
     if (!khachHangId) {
-      const insertCustomerQuery = `
+      const upsertCustomerQuery = `
         INSERT INTO khach_hang (ho_ten, ngay_sinh, gioi_tinh, cccd, so_dien_thoai, email, dia_chi, quoc_tich, nghe_nghiep)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (cccd) 
+        DO UPDATE SET 
+          ho_ten = EXCLUDED.ho_ten,
+          ngay_sinh = EXCLUDED.ngay_sinh,
+          gioi_tinh = EXCLUDED.gioi_tinh,
+          so_dien_thoai = EXCLUDED.so_dien_thoai,
+          email = EXCLUDED.email,
+          dia_chi = EXCLUDED.dia_chi,
+          quoc_tich = EXCLUDED.quoc_tich,
+          nghe_nghiep = EXCLUDED.nghe_nghiep
         RETURNING id
       `;
       const customerValues = [
         customer.ho_ten, customer.ngay_sinh || null, customer.gioi_tinh, customer.cccd, 
         customer.so_dien_thoai, customer.email, customer.dia_chi, customer.quoc_tich, customer.nghe_nghiep
       ];
-      const { rows: newCustomer } = await client.query(insertCustomerQuery, customerValues);
-      khachHangId = newCustomer[0].id;
+      const { rows: upsertedCustomer } = await client.query(upsertCustomerQuery, customerValues);
+      khachHangId = upsertedCustomer[0].id;
     }
 
     // 2. Tạo Phiếu đăng ký thuê
     const maPhieu = generateMaPhieu();
     const insertRegistrationQuery = `
       INSERT INTO phieu_dang_ky_thue (
-        ma_phieu, khach_hang_id, nhan_vien_sale_id, hinh_thuc_thue, so_luong_nguoi, 
+        ma_phieu, khach_hang_id, nhan_vien_sale_id, chi_nhanh_id, hinh_thuc_thue, so_luong_nguoi, 
         gioi_tinh_nhom, khu_vuc_mong_muon, loai_phong_mong_muon, muc_gia_mong_muon, 
         ngay_du_kien_vao_o, thoi_han_thue_thang, tieu_chi_uu_tien, ghi_chu, trang_thai
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'CHO_XU_LY')
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'CHO_XU_LY')
       RETURNING id
     `;
     const regValues = [
-      maPhieu, khachHangId, sale_id, registration.hinh_thuc_thue, registration.so_luong_nguoi,
+      maPhieu, khachHangId, sale_id, registration.chi_nhanh_id || null, registration.hinh_thuc_thue, registration.so_luong_nguoi,
       registration.gioi_tinh_nhom, registration.khu_vuc_mong_muon, registration.loai_phong_mong_muon,
       registration.muc_gia_mong_muon || null, registration.ngay_du_kien_vao_o || null, 
       registration.thoi_han_thue_thang || null, registration.tieu_chi_uu_tien, registration.ghi_chu
@@ -102,6 +143,8 @@ exports.createRegistration = async (req, res) => {
       }
     }
 
+    // 5. [ĐÃ BỎ] Không tự động khởi tạo Yêu cầu đặt cọc nữa. Sale sẽ tự tạo sau khi Quản lý duyệt.
+
     await client.query('COMMIT'); // Hoàn tất transaction
     res.status(201).json({ message: 'Tạo phiếu đăng ký thành công', ma_phieu: maPhieu });
 
@@ -131,11 +174,17 @@ exports.getRegistrationDetail = async (req, res) => {
         k.quoc_tich AS khach_hang_quoc_tich,
         k.nghe_nghiep AS khach_hang_nghe_nghiep,
         nv.ho_ten AS nhan_vien_sale_ten,
-        cn.ten_chi_nhanh AS chi_nhanh_ten
+        cn.ten_chi_nhanh AS chi_nhanh_ten,
+        ph.ma_phong AS phong_duoc_gan_ma,
+        ph.gia_thue_thang AS phong_duoc_gan_gia,
+        g.ma_giuong AS giuong_duoc_gan_ma,
+        g.gia_thue_thang AS giuong_duoc_gan_gia
       FROM phieu_dang_ky_thue p
       JOIN khach_hang k ON p.khach_hang_id = k.id
       LEFT JOIN nhan_vien nv ON p.nhan_vien_sale_id = nv.id
       LEFT JOIN chi_nhanh cn ON p.chi_nhanh_id = cn.id
+      LEFT JOIN phong ph ON p.phong_id = ph.id
+      LEFT JOIN giuong g ON p.giuong_id = g.id
       WHERE p.id = $1
     `;
     const { rows: mainRows } = await db.query(mainQuery, [id]);

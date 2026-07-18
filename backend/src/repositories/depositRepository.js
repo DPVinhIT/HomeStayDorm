@@ -11,6 +11,8 @@ const mapStatusToDisplay = (status) => {
     case 'HET_HAN':
       return 'Hết hạn';
     // Dự phòng các trạng thái cũ
+    case 'DA_PHE_DUYET':
+      return 'Đã phê duyệt';
     case 'DA_DUYET':
       return 'Đã duyệt';
     case 'TU_CHOI':
@@ -62,9 +64,9 @@ const getAllDeposits = async (client = db, filters = {}) => {
     JOIN phieu_dang_ky_thue pdk ON dc.phieu_dang_ky_id = pdk.id
     JOIN khach_hang kh ON pdk.khach_hang_id = kh.id
     LEFT JOIN phong p ON dc.phong_id = p.id
-    LEFT JOIN chi_nhanh c ON p.chi_nhanh_id = c.id OR pdk.chi_nhanh_id = c.id
+    LEFT JOIN chi_nhanh c ON c.id = COALESCE(p.chi_nhanh_id, pdk.chi_nhanh_id)
     ${whereClause}
-    ORDER BY dc.trang_thai, dc.created_at DESC
+    ORDER BY dc.created_at DESC
   `;
 
   const result = await client.query(query, params);
@@ -76,6 +78,7 @@ const getDepositById = async (client = db, id) => {
     SELECT
       -- 1. Thông tin chung phiếu cọc
       dc.id,
+      dc.phieu_dang_ky_id,
       dc.ma_don_coc,
       dc.so_tien_coc,
       dc.han_thanh_toan,
@@ -112,7 +115,7 @@ const getDepositById = async (client = db, id) => {
     JOIN phieu_dang_ky_thue pdk ON dc.phieu_dang_ky_id = pdk.id
     JOIN khach_hang kh ON pdk.khach_hang_id = kh.id
     LEFT JOIN phong p ON dc.phong_id = p.id
-    LEFT JOIN chi_nhanh c ON p.chi_nhanh_id = c.id OR pdk.chi_nhanh_id = c.id
+    LEFT JOIN chi_nhanh c ON c.id = COALESCE(p.chi_nhanh_id, pdk.chi_nhanh_id)
     
     -- Các JOIN mới thêm vào theo chuẩn Lược đồ
     LEFT JOIN nhan_vien nv ON dc.created_by = nv.id

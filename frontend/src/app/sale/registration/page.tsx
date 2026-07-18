@@ -43,17 +43,55 @@ export default function RegistrationListPage() {
     setFilteredRegistrations(filtered);
   };
 
+  const formatStatus = (status: string) => {
+    if (!status) return 'N/A';
+    if (status === 'Đã duyệt') return 'Đã duyệt';
+    const statusMap: Record<string, string> = {
+      'KHOI_TAO': 'Khởi tạo',
+      'CHO_XAC_NHAN': 'Chờ xác nhận',
+      'DA_XAC_NHAN': 'Đã xác nhận',
+      'CHO_THANH_TOAN': 'Chờ thanh toán',
+      'DA_THANH_TOAN': 'Đã thanh toán',
+      'CHO_PHE_DUYET': 'Chờ phê duyệt',
+      'DA_PHE_DUYET': 'Đã duyệt',
+      'TU_CHOI': 'Từ chối',
+      'DA_HUY': 'Đã hủy',
+      'HOAN_THANH': 'Hoàn thành',
+      'DANG_THUC_HIEN': 'Đang thực hiện',
+      'CHO_XU_LY': 'Mới',
+      'DANG_XU_LY': 'Đang xử lý',
+      'DA_CHUYEN_DOI': 'Đã chuyển đổi',
+      'CHO_DUYET': 'Chờ duyệt',
+      'DA_DAT_COC': 'Đã đặt cọc',
+      'HET_HAN': 'Hết hạn',
+    };
+    return statusMap[status] || status;
+  };
+
   const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'CHO_XU_LY':
-        return <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Mới</span>;
-      case 'DANG_XU_LY':
-        return <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">Đang xử lý</span>;
-      case 'DA_CHUYEN_DOI':
-        return <span className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">Đã chuyển đổi</span>;
-      default:
-        return <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">{status}</span>;
+    const formatted = formatStatus(status);
+    let bg = 'bg-gray-100';
+    let text = 'text-gray-600';
+    const textLower = formatted.toLowerCase();
+
+    if (textLower === 'mới' || textLower.includes('đã duyệt') || textLower.includes('hoàn thành') || textLower.includes('đã đặt cọc') || textLower.includes('đã thanh toán') || textLower.includes('đã xác nhận')) {
+      bg = 'bg-green-100';
+      text = 'text-green-700';
+    } else if (textLower.includes('chờ') || textLower.includes('đang xử lý') || textLower.includes('khởi tạo')) {
+      bg = 'bg-amber-100';
+      text = 'text-amber-700';
+    } else if (textLower.includes('hủy') || textLower.includes('từ chối')) {
+      bg = 'bg-red-100';
+      text = 'text-red-700';
+    } else if (textLower.includes('đã chuyển đổi') || textLower.includes('đang thực hiện')) {
+      bg = 'bg-blue-100';
+      text = 'text-blue-700';
+    } else {
+      bg = 'bg-gray-200';
+      text = 'text-gray-700';
     }
+
+    return <span className={`px-3 py-1 ${bg} ${text} text-xs font-semibold rounded-full whitespace-nowrap`}>{formatted}</span>;
   };
 
   // Get unique room types for the dropdown

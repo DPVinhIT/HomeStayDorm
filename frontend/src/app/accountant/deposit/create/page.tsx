@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import axiosInstance from '@/lib/axios';
 
 // Component chứa nội dung form chính
 function CreateReceiptForm() {
@@ -8,53 +9,91 @@ function CreateReceiptForm() {
   const searchParams = useSearchParams();
   
   // Nhận mã ID từ URL truyền sang, mặc định nếu lỗi là đơn đầu tiên
-  const targetId = searchParams.get('id') || '#DC-1042'; 
+  const targetId = searchParams.get('id') || ''; 
   
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    amount: '3,500,000',
-    payer: 'Nguyễn Văn A',
-    reason: 'Thu tiền đặt cọc phòng P.302 – Tòa A',
+    amount: '0',
+    payer: '',
+    reason: '',
     method: 'Tiền mặt'
   });
+  
+  // Trạng thái cho hình ảnh minh chứng
+  const [proofImage, setProofImage] = useState<File | null>(null);
 
-  // Tự động đổ dữ liệu tương ứng của khách hàng lên form
+  // Gọi API lấy dữ liệu phiếu đặt cọc thật
   useEffect(() => {
-    const savedData = localStorage.getItem('deposit_requests');
-    if (savedData) {
-      const list = JSON.parse(savedData);
-      const currentItem = list.find((item: any) => item.id === targetId);
-      if (currentItem) {
-        setFormData({
-          amount: currentItem.amount.replace(/[^0-9]/g, ''), 
-          payer: currentItem.name,
-          reason: `Thu tiền đặt cọc phòng ${currentItem.room}`,
-          method: 'Tiền mặt'
-        });
+    if (!targetId) return;
+    
+    const fetchDeposit = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosInstance.get(`/deposits/${targetId}`);
+        const data = res.data?.data;
+        if (data) {
+          setFormData({
+            amount: Number(data.thanh_toan?.tien_coc_yeu_cau || 0).toLocaleString('vi-VN'),
+            payer: data.khach_thue?.ho_ten || '',
+            reason: `Thu tiền đặt cọc phòng ${data.thong_tin_phong?.ten_phong} – ${data.thong_tin_phong?.toa_nha_tang.split(' - ')[0]}`,
+            method: 'Tiền mặt'
+          });
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin phiếu cọc:', error);
+        alert('Không thể tải dữ liệu phiếu đặt cọc!');
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+    
+    fetchDeposit();
   }, [targetId]);
 
   // Xử lý khi nhấn nút Thanh toán
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
 
-    // Tìm và cập nhật trạng thái "approved" trong localStorage
-    const savedData = localStorage.getItem('deposit_requests');
-    if (savedData) {
-      const list = JSON.parse(savedData);
-      const updatedList = list.map((item: any) => {
-        if (item.id === targetId) {
-          return { ...item, status: 'approved' }; 
-        }
-        return item;
-      });
-      localStorage.setItem('deposit_requests', JSON.stringify(updatedList));
+    if (formData.method === 'Chuyển khoản' && !proofImage) {
+      alert('Vui lòng upload hình ảnh minh chứng chuyển khoản!');
+      return;
     }
 
-    // Mở Pop-up thông báo thành công
-    setShowSuccessModal(true);
+    try {
+      setSubmitting(true);
+      // Gọi API cập nhật trạng thái phiếu cọc
+      await axiosInstance.patch(`/deposits/${targetId}/status`, {
+        status: 'DA_THANH_TOAN'
+      });
+      
+      // Lưu lại thông tin phương thức và ảnh lên localStorage để mô phỏng cho Manager
+      localStorage.setItem(`mock_payment_${targetId}`, JSON.stringify({
+        method: formData.method,
+        fileName: proofImage ? proofImage.name : null
+      }));
+
+      // Mở Pop-up thông báo thành công
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error('Lỗi khi thanh toán:', error);
+      alert('Có lỗi xảy ra khi phê duyệt thanh toán!');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProofImage(e.target.files[0]);
+    }
+  };
+
+  if (loading) {
+    return <div className="w-full p-6 text-center text-gray-500">Đang tải dữ liệu phiếu thu...</div>;
+  }
 
   return (
     <div className="w-full p-6 bg-[#f8f9fa] min-h-screen text-[#212529]">
@@ -134,13 +173,47 @@ function CreateReceiptForm() {
                 </div>
               </div>
             </div>
+
+            {/* Upload minh chứng (Chỉ hiển thị nếu là Chuyển khoản) */}
+            {formData.method === 'Chuyển khoản' && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">Hình ảnh minh chứng giao dịch <span className="text-red-500">*</span></label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                    id="proofUpload" 
+                  />
+                  <label htmlFor="proofUpload" className="flex flex-col items-center cursor-pointer w-full">
+                    {proofImage ? (
+                      <div className="text-sm font-medium text-[#044327] flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        {proofImage.name}
+                      </div>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-gray-400 mb-2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                        <span className="text-sm text-gray-500 font-medium">Nhấn để tải lên ảnh chụp màn hình</span>
+                        <span className="text-xs text-gray-400 mt-1">Hỗ trợ JPG, PNG</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Các nút bấm */}
           <div className="flex justify-end items-center gap-2 pt-4">
-            <button type="button" onClick={() => router.back()} className="px-4 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50">Hủy</button>
-            <button type="button" className="px-4 py-1.5 bg-[#004d26] hover:bg-[#003d1e] text-white rounded-lg text-xs font-bold flex items-center gap-1">💾 Lưu</button>
-            <button type="submit" className="px-5 py-1.5 bg-[#044327] hover:bg-[#03341e] text-white rounded-lg text-xs font-bold shadow-sm">Thanh toán</button>
+            <button type="button" onClick={() => router.back()} disabled={submitting} className="px-4 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50">Hủy</button>
+            <button type="button" disabled={submitting} className="px-4 py-1.5 bg-[#004d26] hover:bg-[#003d1e] text-white rounded-lg text-xs font-bold flex items-center gap-1 disabled:opacity-50">💾 Lưu</button>
+            <button type="submit" disabled={submitting} className="px-5 py-1.5 bg-[#044327] hover:bg-[#03341e] text-white rounded-lg text-xs font-bold shadow-sm disabled:opacity-50">
+              {submitting ? 'Đang xử lý...' : 'Thanh toán'}
+            </button>
           </div>
         </form>
       </div>
@@ -154,7 +227,7 @@ function CreateReceiptForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <h3 className="text-base font-bold text-gray-800 mb-5 tracking-wide">Phê duyệt thành công!</h3>
+            <h3 className="text-base font-bold text-gray-800 mb-5 tracking-wide">Thanh toán thành công!</h3>
             <button
               onClick={() => {
                 setShowSuccessModal(false);

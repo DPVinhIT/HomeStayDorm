@@ -81,6 +81,10 @@ export default function Step1Customer({ data, updateData, onNext, onCancel }: Pr
     updateData('customer', { ...data.customer, [e.target.name]: e.target.value });
   };
 
+  const handleRegistrationChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    updateData('registration', { ...data.registration, [e.target.name]: e.target.value });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
 
@@ -190,6 +194,84 @@ export default function Step1Customer({ data, updateData, onNext, onCancel }: Pr
 
         <InputField label="Quốc tịch" icon={Globe} name="quoc_tich" value={data.customer.quoc_tich} onChange={handleCustomerChange} placeholder="VD: Việt Nam" required />
         <InputField label="Nghề nghiệp" icon={Briefcase} name="nghe_nghiep" value={data.customer.nghe_nghiep} onChange={handleCustomerChange} placeholder="Nhập nghề nghiệp" required />
+      </div>
+
+      {/* Tiêu đề Nhu cầu thuê */}
+      <div className="flex items-start gap-4 mt-8">
+        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+          <Globe size={24} />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Nhu cầu thuê phòng</h2>
+          <p className="text-gray-500 text-sm mt-1">Thông tin về nhu cầu và mong muốn của khách hàng.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 bg-gray-50/50 p-6 rounded-xl border border-gray-100">
+        <SelectField
+          label="Chi nhánh ưu tiên"
+          icon={MapPin}
+          name="chi_nhanh_id"
+          value={data.registration.chi_nhanh_id}
+          onChange={handleRegistrationChange}
+          options={[
+            { value: '1', label: 'Chi nhánh 1' },
+            { value: '2', label: 'Chi nhánh 2' },
+          ]}
+        />
+        <SelectField
+          label="Hình thức thuê"
+          icon={Briefcase}
+          name="hinh_thuc_thue"
+          value={data.registration.hinh_thuc_thue}
+          onChange={handleRegistrationChange}
+          options={[
+            { value: 'Theo giường', label: 'Theo giường' },
+            { value: 'Theo phòng', label: 'Theo phòng' }
+          ]}
+        />
+        <SelectField
+          label="Loại phòng mong muốn"
+          icon={Briefcase}
+          name="loai_phong_mong_muon"
+          value={data.registration.loai_phong_mong_muon}
+          onChange={handleRegistrationChange}
+          options={[
+            { value: 'Studio Premium', label: 'Studio Premium' },
+            { value: '1PN', label: '1 Phòng ngủ' },
+            { value: 'Ký túc xá', label: 'Ký túc xá' }
+          ]}
+        />
+        <InputField 
+          label="Mức giá mong muốn" 
+          icon={CreditCard} 
+          name="muc_gia_mong_muon" 
+          value={
+            data.registration.muc_gia_mong_muon 
+              ? Number(data.registration.muc_gia_mong_muon.toString().replace(/\D/g, '')).toLocaleString('vi-VN') 
+              : ''
+          } 
+          onChange={(e: any) => {
+            const rawValue = e.target.value.replace(/\D/g, '');
+            updateData('registration', { ...data.registration, muc_gia_mong_muon: rawValue });
+          }} 
+          placeholder="VD: 2.000.000" 
+        />
+        <InputField type="number" label="Số lượng người ở" icon={User} name="so_luong_nguoi" value={data.registration.so_luong_nguoi} onChange={handleRegistrationChange} />
+        <SelectField
+          label="Giới tính nhóm"
+          icon={User}
+          name="gioi_tinh_nhom"
+          value={data.registration.gioi_tinh_nhom}
+          onChange={handleRegistrationChange}
+          options={[
+            { value: 'Nam', label: 'Nam' },
+            { value: 'Nữ', label: 'Nữ' },
+            { value: 'Hỗn hợp', label: 'Hỗn hợp' }
+          ]}
+        />
+        <InputField type="number" label="Thời hạn thuê (tháng)" icon={Calendar} name="thoi_han_thue_thang" value={data.registration.thoi_han_thue_thang} onChange={handleRegistrationChange} />
+        <InputField label="Khu vực ưu tiên / Tiêu chí khác" icon={MapPin} name="tieu_chi_uu_tien" value={data.registration.tieu_chi_uu_tien} onChange={handleRegistrationChange} placeholder="Yêu cầu thêm" />
       </div>
 
       <div className="flex justify-end gap-4 pt-6 mt-4 border-t border-gray-100">
